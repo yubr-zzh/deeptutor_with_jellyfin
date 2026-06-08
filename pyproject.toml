@@ -1,0 +1,278 @@
+# =============================================================================
+# DeepTutor-Plus Python Project Configuration
+# =============================================================================
+# Merged from DeepTutor and Open-TutorAi
+# License: Apache 2.0
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deep-tutor-plus"
+version = "1.0.0"
+description = "DeepTutor + Open-TutorAi merged: Agent-Native intelligent tutoring with Avatar/TTS/MoA support"
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    { name = "HKUDS", email = "deeptutor@example.com" },
+    { name = "Open-TutorAi Contributors" }
+]
+
+# =============================================================================
+# Core Dependencies (merged from both projects)
+# =============================================================================
+dependencies = [
+    # DeepTutor core
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0",
+    "jinja2>=3.1.0",
+    "openai>=1.30.0",
+    "tiktoken>=0.5.0",
+    "aiohttp>=3.9.4",
+    "httpx>=0.27.0",
+    "requests>=2.32.2",
+    "nest_asyncio>=1.5.8",
+    "tenacity>=8.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "aiosqlite>=0.19.0",
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "prompt_toolkit>=3.0.36",
+    # Open-TutorAi additions
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.6",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "argon2-cffi>=23.1.0",
+    # RAG (LlamaIndex) - DeepTutor style
+    "llama-index>=0.14.12",
+    "PyMuPDF>=1.26.0",
+    "numpy>=1.24.0,<3.0.0",
+    "arxiv>=2.0.0",
+    # Document parsing
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
+    "python-pptx>=1.0.0",
+    "pypdf>=4.0.0",
+    "defusedxml>=0.7.1",
+    # LangChain (Open-TutorAi RAG)
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "chromadb>=0.6.0",
+    "sentence-transformers>=3.0.0",
+    # Utilities
+    "ddgs>=9.9.1",
+    "bcrypt>=4.0.0",
+    "loguru>=0.7.3,<1.0.0",
+    "json-repair>=0.57.0,<1.0.0",
+]
+
+# =============================================================================
+# CLI Entry Point
+# =============================================================================
+[project.scripts]
+deeptutor = "deeptutor_cli.main:main"
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
+[project.optional-dependencies]
+
+# Full CLI: RAG (LlamaIndex), document parsing, and LLM provider SDKs.
+cli = [
+    # LLM provider SDKs
+    "anthropic>=0.30.0",
+    "dashscope>=1.14.0",
+    "perplexityai>=0.1.0",
+    # RAG (LlamaIndex)
+    "llama-index>=0.14.12",
+    "PyMuPDF>=1.26.0",
+    "numpy>=1.24.0,<3.0.0",
+    "arxiv>=2.0.0",
+    # Document parsing
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
+    "python-pptx>=1.0.0",
+    "pypdf>=4.0.0",
+]
+
+# Web/API server (CLI + FastAPI)
+server = [
+    "deep-tutor-plus[cli]",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "bcrypt>=4.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "pocketbase>=0.12.0",
+    "loguru>=0.7.3,<1.0.0",
+    "json-repair>=0.57.0,<1.0.0",
+]
+
+# TutorBot agent engine + channel SDKs
+tutorbot = [
+    "deep-tutor-plus[server]",
+    "croniter>=6.0.0,<7.0.0",
+    "tiktoken>=0.12.0,<1.0.0",
+    "chardet>=3.0.2,<6.0.0",
+    "mcp>=1.26.0,<2.0.0",
+    "readability-lxml>=0.8.4,<1.0.0",
+    "python-telegram-bot[socks]>=22.6,<23.0",
+    "lark-oapi>=1.5.0,<2.0.0",
+    "dingtalk-stream>=0.24.0,<1.0.0",
+    "slack-sdk>=3.39.0,<4.0.0",
+    "slackify-markdown>=0.2.0,<1.0.0",
+    "qq-botpy>=1.2.0,<2.0.0",
+    "python-socketio>=5.16.0,<6.0.0",
+    "msgpack>=1.1.0,<2.0.0",
+    "python-socks[asyncio]>=2.8.0,<3.0.0",
+    "socksio>=1.0.0,<2.0.0",
+    "websocket-client>=1.9.0,<2.0.0",
+    "zulip>=0.8.0,<1.0.0",
+]
+
+# Matrix (Element) channel for TutorBot
+matrix = [
+    "matrix-nio>=0.25.2,<1.0.0",
+    "mistune>=3.0.0,<4.0.0",
+    "nh3>=0.2.18,<1.0.0",
+]
+
+# Matrix E2EE addon
+matrix-e2e = [
+    "deep-tutor-plus[matrix]",
+    "matrix-nio[e2e]>=0.25.2,<1.0.0",
+]
+
+# Math Animator addon (Manim)
+math-animator = ["manim>=0.19.0"]
+
+# Avatar/TTS Support (Open-TutorAi features)
+avatar = [
+    "deep-tutor-plus[server]",
+    "soundfile>=0.13.0",
+    "pydub>=0.24.0",
+]
+
+# MoA (Mixture of Agents) Support
+moa = [
+    "deep-tutor-plus[server]",
+]
+
+# Dev/test tooling
+dev = [
+    "deep-tutor-plus[server]",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pre-commit>=3.0.0",
+    "safety<3.0.0",
+    "bandit>=1.8.0",
+]
+
+# Everything: server + tutorbot + non-E2EE matrix + math-animator + avatar + dev tools
+all = [
+    "deep-tutor-plus[tutorbot]",
+    "deep-tutor-plus[matrix]",
+    "deep-tutor-plus[math-animator]",
+    "deep-tutor-plus[avatar]",
+    "deep-tutor-plus[moa]",
+    "deep-tutor-plus[dev]",
+]
+
+# =============================================================================
+# Package Configuration
+# =============================================================================
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["deeptutor*", "deeptutor_cli*", "backend*"]
+
+# =============================================================================
+# Black code formatter configuration
+# =============================================================================
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.eggs
+  | \.git
+  | \.venv
+  | venv
+  | _build
+  | build
+  | dist
+  | __pycache__
+  | node_modules
+  | \.next
+)/
+'''
+
+# =============================================================================
+# Ruff linter and formatter configuration
+# =============================================================================
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+extend-select = ["B006"]
+ignore = [
+    "E501",
+    "B008",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLR2004",
+    "T201",
+    "E722",
+    "E402",
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["deeptutor", "deeptutor_cli", "scripts", "backend"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = ["E501", "PLR2004", "F401"]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# =============================================================================
+# Pytest configuration
+# =============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short"]
+
+# =============================================================================
+# MyPy type checking configuration
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "silent"
+check_untyped_defs = false
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

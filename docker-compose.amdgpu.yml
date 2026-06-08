@@ -1,0 +1,76 @@
+# =============================================================================
+# DeepTutor-Plus Docker Compose - AMD GPU Version
+# =============================================================================
+# For AMD GPU acceleration (ROCm)
+# Usage: docker-compose -f docker-compose.amdgpu.yml up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: deeptutor-plus-backend
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LLM_BINDING=${LLM_BINDING:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_HOST=${LLM_HOST:-https://api.openai.com/v1}
+      - AVATAR_ENABLED=${AVATAR_ENABLED:-true}
+      - KOKORO_TTS_ENABLED=${KOKORO_TTS_ENABLED:-true}
+      - MOA_ENABLED=${MOA_ENABLED:-true}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    networks:
+      - deeptutor-network
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: ../Dockerfile
+      target: frontend
+    container_name: deeptutor-plus-frontend
+    ports:
+      - "${FRONTEND_PORT:-3782}:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://backend:8001
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - deeptutor-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: deeptutor-plus-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+    runtime: rocm
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    restart: unless-stopped
+    networks:
+      - deeptutor-network
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  deeptutor-network:
+    driver: bridge

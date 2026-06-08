@@ -1,0 +1,80 @@
+# =============================================================================
+# DeepTutor-Plus Docker Compose - Ollama Local Models Version
+# =============================================================================
+# For using local Ollama models without cloud API
+# Usage: docker-compose -f docker-compose.ollama.yml up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: deeptutor-plus-backend
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Use Ollama for both LLM and embedding
+      - LLM_BINDING=ollama
+      - LLM_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - LLM_HOST=http://ollama:11434
+      - EMBEDDING_BINDING=ollama
+      - EMBEDDING_MODEL=${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      - EMBEDDING_HOST=http://ollama:11434
+      # Disable cloud APIs
+      - LLM_API_KEY=
+      - EMBEDDING_API_KEY=
+      # Enable local features
+      - AVATAR_ENABLED=${AVATAR_ENABLED:-true}
+      - KOKORO_TTS_ENABLED=${KOKORO_TTS_ENABLED:-true}
+      - MOA_ENABLED=${MOA_ENABLED:-false}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    networks:
+      - deeptutor-network
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: ../Dockerfile
+      target: frontend
+    container_name: deeptutor-plus-frontend
+    ports:
+      - "${FRONTEND_PORT:-3782}:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://backend:8001
+      - NEXT_PUBLIC_OLLAMA_URL=http://ollama:11434
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - deeptutor-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: deeptutor-plus-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - deeptutor-network
+    # Pull models on startup (uncomment to auto-pull)
+    # entrypoint: /bin/bash -c "ollama pull llama3.2 && ollama pull nomic-embed-text && tail -f /dev/null"
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  deeptutor-network:
+    driver: bridge
