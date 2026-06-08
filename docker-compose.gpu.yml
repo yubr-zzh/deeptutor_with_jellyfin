@@ -1,0 +1,90 @@
+# =============================================================================
+# DeepTutor-Plus Docker Compose - GPU Version
+# =============================================================================
+# For NVIDIA GPU acceleration
+# Usage: docker-compose -f docker-compose.gpu.yml up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: deeptutor-plus-backend
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LLM_BINDING=${LLM_BINDING:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_HOST=${LLM_HOST:-https://api.openai.com/v1}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING:-openai}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-large}
+      - EMBEDDING_API_KEY=${EMBEDDING_API_KEY:-}
+      - EMBEDDING_HOST=${EMBEDDING_HOST:-https://api.openai.com/v1/embeddings}
+      - SEARCH_PROVIDER=${SEARCH_PROVIDER:-}
+      - SEARCH_API_KEY=${SEARCH_API_KEY:-}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - AUTH_SECRET=${AUTH_SECRET:-}
+      - AVATAR_ENABLED=${AVATAR_ENABLED:-true}
+      - KOKORO_TTS_ENABLED=${KOKORO_TTS_ENABLED:-true}
+      - MOA_ENABLED=${MOA_ENABLED:-true}
+      - MOA_MODELS=${MOA_MODELS:-gpt-4o,claude-3-opus}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data:/app/data
+      - ./deeptutor:/app/deeptutor
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    networks:
+      - deeptutor-network
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: ../Dockerfile
+      target: frontend
+    container_name: deeptutor-plus-frontend
+    ports:
+      - "${FRONTEND_PORT:-3782}:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://backend:8001
+      - NEXT_PUBLIC_AUTH_ENABLED=${AUTH_ENABLED:-false}
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - deeptutor-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: deeptutor-plus-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${OLLAMA_GPU_COUNT:-1}
+              capabilities:
+                - gpu
+    restart: unless-stopped
+    networks:
+      - deeptutor-network
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  deeptutor-network:
+    driver: bridge
