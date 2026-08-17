@@ -296,6 +296,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 # All other routers require a valid session when AUTH_ENABLED=true.
 # require_auth is a no-op when AUTH_ENABLED=false, so this is safe for local use.
 from deeptutor.api.routers.auth import require_auth  # noqa: E402
+from deeptutor.api.routers.courses import router as courses_router  # noqa: E402
 
 _auth = [Depends(require_auth)]
 
@@ -361,6 +362,9 @@ app.include_router(
 
 # Unified WebSocket endpoint — auth is checked inside the handler (WebSockets
 # cannot use FastAPI dependencies in the standard way)
+app.include_router(
+    courses_router, prefix="/api/v1", tags=["courses"], dependencies=_auth
+)
 app.include_router(unified_ws.router, prefix="/api/v1", tags=["unified-ws"])
 
 
