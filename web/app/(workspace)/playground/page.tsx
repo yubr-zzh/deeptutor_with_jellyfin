@@ -366,7 +366,6 @@ function ToolExecutor({
     });
   }, []);
 
-
   const [values, setValues] = useState<Record<string, string>>({});
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<ExecResult | null>(null);
