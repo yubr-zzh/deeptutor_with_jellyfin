@@ -65,6 +65,7 @@ export async function listSkills(options?: {
     async () => {
       const response = await fetch(apiUrl("/api/v1/skills/list"), {
         cache: "no-store",
+        credentials: "include",
       });
       const data = await asJson(response);
       const items = Array.isArray(data?.skills) ? data.skills : [];
@@ -158,6 +159,7 @@ export async function listSkillTags(options?: {
     async () => {
       const response = await fetch(apiUrl("/api/v1/skills/tags/list"), {
         cache: "no-store",
+        credentials: "include",
       });
       const data = await asJson(response);
       return normalizeTags(data?.tags);
