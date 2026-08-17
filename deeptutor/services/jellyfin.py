@@ -51,6 +51,7 @@ DEFAULT_API_KEY = _env("JELLYFIN_API_KEY", "")
 # via the host path. Both sides must agree on the *container* relative path.
 DEFAULT_MEDIA_ROOT_HOST = _env("COURSE_MEDIA_ROOT", "D:/Media")
 DEFAULT_COURSE_LIBRARY_NAME = _env("JELLYFIN_COURSE_LIBRARY", "课程库")
+DEFAULT_USER_ID = _env("JELLYFIN_USER_ID", "")
 # DeepTutor sees the host path; Jellyfin sees /media/... — strip the host root
 # and re-prefix with the container mount point.
 CONTAINER_MEDIA_PREFIX = "/media"
@@ -104,6 +105,20 @@ class JellyfinClient:
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="replace")[:300]
             raise JellyfinError(f"Jellyfin {method} {path} -> {e.code}: {detail}") from e
+
+    _stream_client = None  # module-level reuse: keeps the response stream alive
+
+    async def _http_stream(self, request: httpx.Request) -> httpx.Response:
+        """Send a streaming HTTP request via httpx (async, no timeout stall).
+
+        Uses a module-level client so the response stream stays alive after
+        this method returns (an ``async with`` client would close it).
+        """
+        import httpx
+
+        if JellyfinClient._stream_client is None:
+            JellyfinClient._stream_client = httpx.AsyncClient(timeout=None)
+        return await JellyfinClient._stream_client.send(request, stream=True)
 
     def ping(self) -> dict[str, Any]:
         return self._request("GET", "/System/Info/Public")
@@ -260,6 +275,47 @@ class JellyfinClient:
                     return it
             time.sleep(self._poll_interval)
         return None
+
+
+    def episode_by_id(self, item_id: str) -> dict[str, Any] | None:
+        """Fetch a single Jellyfin item by id."""
+        try:
+            return self._request("GET", f"/Items/{item_id}")
+        except JellyfinError:
+            return None
+
+    def playback_info(self, item_id: str) -> dict[str, Any]:
+        """Fetch PlaybackInfo for an item (media sources)."""
+        user_id = os.getenv("JELLYFIN_USER_ID", "") or DEFAULT_USER_ID
+        params: dict[str, Any] = {}
+        if user_id:
+            params["UserId"] = user_id
+        return self._request(
+            "POST",
+            f"/Items/{item_id}/PlaybackInfo",
+            params=params,
+            body={"AutoOpenLiveStream": False},
+        )
+
+    def direct_stream_url(self, item_id: str) -> str:
+        """Build the Jellyfin direct-stream URL for an item.
+
+        ``static=true`` forces direct streaming (no transcode) — our upload
+        pipeline normalises to H.264/AAC so browsers can play it natively.
+        The api_key travels server-side only; the frontend never sees it.
+        """
+        from urllib.parse import urlencode
+
+        info = self.playback_info(item_id)
+        sources = (info or {}).get("MediaSources") or []
+        source_id = sources[0]["Id"] if sources else item_id
+        qs = urlencode({
+            "static": "true",
+            "mediaSourceId": source_id,
+            "api_key": self.api_key,
+            "deviceId": "deeptutor-web",
+        })
+        return f"{self.base_url.rstrip('/')}/Videos/{item_id}/stream?{qs}"
 
 
 _client: JellyfinClient | None = None
