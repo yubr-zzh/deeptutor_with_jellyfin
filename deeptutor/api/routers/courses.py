@@ -51,28 +51,46 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["courses"])
 
 
-def _admin_guard():
-    """Return True when auth is disabled (local dev) or the user is admin."""
-    from deeptutor.services.auth import AUTH_ENABLED
+def _require_course_read(request: Request) -> None:
+    """FastAPI dependency for read endpoints (browse/stream).
+
+    No-op when AUTH_ENABLED=false. When auth is on, accepts the session via
+    cookie, Bearer header, OR query ``?token=`` (needed by <video> tags which
+    cannot attach cookies/headers cross-origin).
+    """
+    from deeptutor.services.auth import AUTH_ENABLED, decode_token
 
     if not AUTH_ENABLED:
-        return None
+        return
 
-    async def check(request) -> None:
-        # Reuse the existing auth machinery: extract token, decode, check role.
-        from fastapi import Request
+    cookie_token = request.cookies.get("dt_token") or ""
+    authz = request.headers.get("Authorization", "")
+    bearer = authz.split(None, 1)[1].strip() if authz.lower().startswith("bearer ") else ""
+    query_token = request.query_params.get("token", "")
+    payload = decode_token(query_token or bearer or cookie_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-        from deeptutor.services.auth import decode_token
 
-        token = request.cookies.get("dt_token") or ""
-        authz = request.headers.get("Authorization", "")
-        if authz.lower().startswith("bearer "):
-            token = authz.split(None, 1)[1].strip()
-        payload = decode_token(token) if token else None
-        if not payload or payload.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Admin role required")
+def _require_admin(request: Request) -> None:
+    """FastAPI dependency: only admin may write (create/delete) media.
 
-    return check
+    No-op when AUTH_ENABLED=false (local dev). When auth is on, the request
+    must carry a valid JWT (cookie or Bearer) whose role is ``admin``.
+    """
+    from deeptutor.services.auth import AUTH_ENABLED, decode_token
+
+    if not AUTH_ENABLED:
+        return
+
+    token = request.cookies.get("dt_token") or ""
+    authz = request.headers.get("Authorization", "")
+    if authz.lower().startswith("bearer "):
+        token = authz.split(None, 1)[1].strip()
+    payload = decode_token(token) if token else None
+    role = getattr(payload, "role", "") if payload else ""
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
 
 
 # ---------------------------------------------------------------------------
@@ -80,13 +98,13 @@ def _admin_guard():
 # ---------------------------------------------------------------------------
 
 
-@router.get("/courses")
+@router.get("/courses", dependencies=[Depends(_require_course_read)])
 async def list_courses():
     store = get_course_store()
     return [c.to_dict() for c in store.list_courses()]
 
 
-@router.post("/courses")
+@router.post("/courses", dependencies=[Depends(_require_admin)])
 async def create_course(
     title: str = Form(...),
     description: str = Form(""),
@@ -98,7 +116,7 @@ async def create_course(
     return course.to_dict()
 
 
-@router.get("/courses/{course_id}")
+@router.get("/courses/{course_id}", dependencies=[Depends(_require_course_read)])
 async def get_course(course_id: str):
     store = get_course_store()
     course = store.get_course(course_id)
@@ -109,7 +127,7 @@ async def get_course(course_id: str):
     return data
 
 
-@router.delete("/courses/{course_id}")
+@router.delete("/courses/{course_id}", dependencies=[Depends(_require_admin)])
 async def delete_course(course_id: str):
     store = get_course_store()
     course = store.get_course(course_id)
@@ -124,7 +142,7 @@ async def delete_course(course_id: str):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/courses/{course_id}/videos")
+@router.get("/courses/{course_id}/videos", dependencies=[Depends(_require_course_read)])
 async def list_videos(course_id: str):
     store = get_course_store()
     if not store.get_course(course_id):
@@ -132,7 +150,7 @@ async def list_videos(course_id: str):
     return [v.to_dict() for v in store.list_videos(course_id)]
 
 
-@router.post("/courses/{course_id}/videos")
+@router.post("/courses/{course_id}/videos", dependencies=[Depends(_require_admin)])
 async def upload_video(
     course_id: str,
     file: UploadFile = File(...),
@@ -205,8 +223,11 @@ async def upload_video(
     return video.to_dict() if video else {"id": video.id}
 
 
-@router.get("/courses/{course_id}/videos/{video_id}/stream")
-async def stream_video(course_id: str, video_id: str, request: Request):
+@router.get("/courses/{course_id}/videos/{video_id}/stream", dependencies=[Depends(_require_course_read)])
+async def stream_video(course_id: str, video_id: str, request: Request, token: str = ""):
+    """...token query param allows <video> tags (no header/cookie control) to
+    authenticate: the frontend appends ?token=<jwt> fetched from the session.
+    """
     """Proxy the Jellyfin direct stream for a course video.
 
     The frontend <video> tag points here; this endpoint validates the video
@@ -214,6 +235,17 @@ async def stream_video(course_id: str, video_id: str, request: Request):
     Jellyfin api_key never reaches the browser, and Jellyfin stays
     non-public (deep-tutor proxies everything).
     """
+    from deeptutor.services.auth import AUTH_ENABLED, decode_token
+
+    if AUTH_ENABLED:
+        # <video> tags cannot set cookies/headers cross-port; accept ?token=
+        cookie_token = request.cookies.get("dt_token") or ""
+        authz = request.headers.get("Authorization", "")
+        bearer = authz.split(None, 1)[1].strip() if authz.lower().startswith("bearer ") else ""
+        payload = decode_token(token or bearer or cookie_token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
     store = get_course_store()
     course = store.get_course(course_id)
     video = store.get_video(video_id) if course else None
@@ -248,7 +280,7 @@ async def stream_video(course_id: str, video_id: str, request: Request):
     )
 
 
-@router.delete("/courses/{course_id}/videos/{video_id}")
+@router.delete("/courses/{course_id}/videos/{video_id}", dependencies=[Depends(_require_admin)])
 async def delete_video(course_id: str, video_id: str):
     store = get_course_store()
     course = store.get_course(course_id)

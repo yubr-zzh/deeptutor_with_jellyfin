@@ -362,9 +362,10 @@ app.include_router(
 
 # Unified WebSocket endpoint — auth is checked inside the handler (WebSockets
 # cannot use FastAPI dependencies in the standard way)
-app.include_router(
-    courses_router, prefix="/api/v1", tags=["courses"], dependencies=_auth
-)
+# Courses router manages its own auth per endpoint: reads accept cookie /
+# Bearer / ?token= (for <video> tags), writes require admin. No global _auth
+# here — that would 401 stream requests carrying only a query token.
+app.include_router(courses_router, prefix="/api/v1", tags=["courses"])
 app.include_router(unified_ws.router, prefix="/api/v1", tags=["unified-ws"])
 
 

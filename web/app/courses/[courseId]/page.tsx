@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   getCourse,
   videoStreamUrl,
@@ -84,8 +85,18 @@ export default function CourseDetailPage() {
   }, [courseId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!AUTH_ENABLED) {
+      void load();
+      return;
+    }
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace(`/login?next=${encodeURIComponent(`/courses/${courseId}`)}`);
+        return;
+      }
+      void load();
+    });
+  }, [router, courseId, load]);
 
   function selectVideo(video: CourseVideoRecord) {
     setCurrentVideo(video);

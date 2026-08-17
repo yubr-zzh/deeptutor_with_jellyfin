@@ -125,6 +125,16 @@ export function statusLabel(s: CourseVideoRecord["status"]): string {
   return STATUS_LABEL[s] ?? s;
 }
 
+function getCookie(name: string): string {
+  if (typeof document === "undefined") return "";
+  const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
 export function videoStreamUrl(courseId: string, videoId: string): string {
-  return apiUrl(`/api/v1/courses/${courseId}/videos/${videoId}/stream`);
+  // <video> tags cannot attach cookies/headers cross-port, so append the
+  // session JWT as a query token when auth is enabled.
+  const token = getCookie("dt_token");
+  const base = apiUrl(`/api/v1/courses/${courseId}/videos/${videoId}/stream`);
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
