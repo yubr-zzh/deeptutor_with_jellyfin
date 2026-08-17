@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import { listCourses, formatDate, type CourseRecord } from "@/lib/courses-api";
 import { BookOpen, PlayCircle, Video, RefreshCw, Clapperboard } from "lucide-react";
 
 export default function CoursesPage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,8 +26,18 @@ export default function CoursesPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!AUTH_ENABLED) {
+      void load();
+      return;
+    }
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace("/login?next=/courses");
+        return;
+      }
+      void load();
+    });
+  }, [router, load]);
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
