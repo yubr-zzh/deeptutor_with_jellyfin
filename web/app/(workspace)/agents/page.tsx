@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   Bot,
   Eye,
@@ -79,6 +81,8 @@ type BotFile = (typeof BOT_FILES)[number];
 /* ── Main Page ──────────────────────────────────────────── */
 
 export default function AgentsPage() {
+  const router = useRouter();
+  const { t } = useTranslation();
   // Redirect to login when auth is enabled but user is not authenticated
   const router = useRouter();
   useEffect(() => {
@@ -90,9 +94,6 @@ export default function AgentsPage() {
     });
   }, []);
 
-
-  const router = useRouter();
-  const { t } = useTranslation();
   const [bots, setBots] = useState<BotInfo[]>([]);
   const [souls, setSouls] = useState<SoulTemplate[]>([]);
   const [loading, setLoading] = useState(true);
