@@ -32,7 +32,10 @@ import os
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+import httpx
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import Response, StreamingResponse
 
 from deeptutor.services.course_store import (
     MAX_VIDEO_BYTES,
@@ -200,6 +203,49 @@ async def upload_video(
 
     video = store.get_video(video.id)
     return video.to_dict() if video else {"id": video.id}
+
+
+@router.get("/courses/{course_id}/videos/{video_id}/stream")
+async def stream_video(course_id: str, video_id: str, request: Request):
+    """Proxy the Jellyfin direct stream for a course video.
+
+    The frontend <video> tag points here; this endpoint validates the video
+    belongs to the course, then streams from Jellyfin server-side. The
+    Jellyfin api_key never reaches the browser, and Jellyfin stays
+    non-public (deep-tutor proxies everything).
+    """
+    store = get_course_store()
+    course = store.get_course(course_id)
+    video = store.get_video(video_id) if course else None
+    if not course or not video or video.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if not video.jellyfin_item_id:
+        raise HTTPException(status_code=409, detail="Video not indexed in Jellyfin yet")
+
+    client = get_jellyfin_client()
+    upstream = client.direct_stream_url(video.jellyfin_item_id)
+
+    # Forward Range header for seek support; stream chunks without buffering.
+    headers = {}
+    range_header = request.headers.get("range")
+    if range_header:
+        headers["Range"] = range_header
+
+    req = httpx.Request("GET", upstream, headers=headers)
+    try:
+        resp = await client._http_stream(req)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stream proxy failed: {e}")
+
+    return StreamingResponse(
+        resp.aiter_bytes(),
+        status_code=resp.status_code,
+        headers={
+            k: v for k, v in resp.headers.items()
+            if k.lower() in ("content-type", "content-length", "content-range",
+                             "accept-ranges", "content-disposition")
+        },
+    )
 
 
 @router.delete("/courses/{course_id}/videos/{video_id}")

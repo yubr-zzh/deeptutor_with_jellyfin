@@ -124,3 +124,7 @@ const STATUS_LABEL: Record<CourseVideoRecord["status"], string> = {
 export function statusLabel(s: CourseVideoRecord["status"]): string {
   return STATUS_LABEL[s] ?? s;
 }
+
+export function videoStreamUrl(courseId: string, videoId: string): string {
+  return apiUrl(`/api/v1/courses/${courseId}/videos/${videoId}/stream`);
+}
