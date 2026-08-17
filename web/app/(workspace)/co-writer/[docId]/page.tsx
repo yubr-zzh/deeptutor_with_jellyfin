@@ -159,7 +159,6 @@ interface StreamEditResult {
 export default function CoWriterPage() {
   const { t } = useTranslation();
   // Redirect to login when auth is enabled but user is not authenticated
-  const router = useRouter();
   useEffect(() => {
     if (!AUTH_ENABLED) return;
     fetchAuthStatus().then((status) => {
