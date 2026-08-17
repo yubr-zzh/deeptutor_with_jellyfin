@@ -12,6 +12,8 @@ import {
 import { useSearchParams } from "next/navigation";
 import { Loader2, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 
 import { bookApi, openBookSocket } from "@/lib/book-api";
 import type {
@@ -65,9 +67,20 @@ function BookLoadingText() {
 
 function BookPageInner() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(false);
   const [view, setView] = useState<View>("list");
+
+  // Redirect to login when auth is enabled but user is not authenticated
+  useEffect(() => {
+    if (!AUTH_ENABLED) return;
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace("/login?next=/book");
+      }
+    });
+  }, [router]);
 
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BookDetail | null>(null);
