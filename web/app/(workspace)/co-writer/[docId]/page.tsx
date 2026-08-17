@@ -1,17 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef,   // Redirect to login when auth is enabled but user is not authenticated
-  useEffect(() => {
-    if (!AUTH_ENABLED) return;
-    fetchAuthStatus().then((status) => {
-      if (!status?.authenticated) {
-        router.replace("/login?next=" + encodeURIComponent(window.location.pathname));
-      }
-    });
-  }, []);
-
-  useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -51,7 +41,6 @@ import {
   Workflow,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";;
 import { apiUrl } from "@/lib/api";
 import { listKnowledgeBases } from "@/lib/knowledge-api";
 import {
@@ -168,6 +157,18 @@ interface StreamEditResult {
 
 export default function CoWriterPage() {
   const { t } = useTranslation();
+  // Redirect to login when auth is enabled but user is not authenticated
+  const router = useRouter();
+  useEffect(() => {
+    if (!AUTH_ENABLED) return;
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace("/login?next=" + encodeURIComponent(window.location.pathname));
+      }
+    });
+  }, []);
+
+
   const router = useRouter();
   const params = useParams<{ docId?: string | string[] }>();
   const docId = useMemo(() => {

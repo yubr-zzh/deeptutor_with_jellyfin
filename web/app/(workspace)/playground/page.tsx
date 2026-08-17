@@ -1,16 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef,   // Redirect to login when auth is enabled but user is not authenticated
-  useEffect(() => {
-    if (!AUTH_ENABLED) return;
-    fetchAuthStatus().then((status) => {
-      if (!status?.authenticated) {
-        router.replace("/login?next=" + encodeURIComponent(window.location.pathname));
-      }
-    });
-  }, []);
-
-  useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   BrainCircuit,
   ChevronDown,
@@ -363,6 +355,18 @@ function ToolExecutor({
 }) {
   const { t } = useTranslation();
   const params = tool.parameters ?? [];
+  // Redirect to login when auth is enabled but user is not authenticated
+  const router = useRouter();
+  useEffect(() => {
+    if (!AUTH_ENABLED) return;
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace("/login?next=" + encodeURIComponent(window.location.pathname));
+      }
+    });
+  }, []);
+
+
   const [values, setValues] = useState<Record<string, string>>({});
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<ExecResult | null>(null);
