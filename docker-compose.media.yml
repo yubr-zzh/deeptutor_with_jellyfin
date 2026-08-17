@@ -1,0 +1,75 @@
+# ============================================
+# DeepTutor × Jellyfin 一体化编排（生产化）
+# ============================================
+# 在原有 docker-compose.yml 基础上叠加本文件，一键起 DeepTutor + Jellyfin：
+#
+#   docker compose -f docker-compose.yml -f docker-compose.media.yml up -d
+#
+# 职责划分：
+#   - DeepTutor（deeptutor 服务）：课程结构、管理后台、流代理（持 Jellyfin key）
+#   - Jellyfin（jellyfin 服务）：视频存储、刮削（已关）、转码、多人并发出流
+#
+# 媒体卷约定（关键）：
+#   - 宿主机 ./media/courses 挂载为 DeepTutor 的 COURSE_MEDIA_ROOT
+#   - 同一目录挂载到 Jellyfin 容器内 /media（COURSE_MEDIA_ROOT 需在 .env 设为 ./media）
+#   - DeepTutor 写文件 -> Jellyfin 扫描 /media 建"课程库"（tvshows 类型）
+#
+# 生产环境变量（.env 中）：
+#   JELLYFIN_URL=http://jellyfin:8096        ← 容器内网地址（关键！不能用 localhost）
+#   JELLYFIN_API_KEY=<在 Jellyfin 管理后台生成的 key>
+#   JELLYFIN_USER_ID=<Jellyfin 管理员用户 ID>
+#   COURSE_MEDIA_ROOT=/app/media             ← 容器内路径（DeepTutor 侧）
+#   NEXT_PUBLIC_API_BASE_EXTERNAL=http://<服务器IP或域名>:8001
+# ============================================
+
+services:
+  # ============================================
+  # Jellyfin 媒体服务器
+  # ============================================
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      # 课程媒体目录：与 deeptutor 的 COURSE_MEDIA_ROOT 指向同一份文件
+      - ./media:/media
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - deeptutor-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/System/Info/Public"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================
+  # DeepTutor（覆盖原服务，补充媒体卷 + Jellyfin 网络依赖）
+  # ============================================
+  deeptutor:
+    volumes:
+      - ./data/user:/app/data/user
+      - ./data/memory:/app/data/memory
+      - ./data/knowledge_bases:/app/data/knowledge_bases
+      # 课程媒体：DeepTutor 写文件到此处，Jellyfin 扫描同一目录
+      - ./media:/app/media
+    depends_on:
+      jellyfin:
+        condition: service_started
+
+# ============================================
+# Volumes（Jellyfin 持久化）
+# ============================================
+volumes:
+  jellyfin-config:
+  jellyfin-cache:
+
+# 复用原 compose 的 network
+networks:
+  deeptutor-network:
+    driver: bridge
