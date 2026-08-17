@@ -45,6 +45,7 @@ export interface NotebookDetail extends NotebookSummary {
 export async function listNotebooks(): Promise<NotebookSummary[]> {
   const response = await fetch(apiUrl("/api/v1/notebook/list"), {
     cache: "no-store",
+    credentials: "include",
   });
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   const data = (await response.json()) as { notebooks: NotebookSummary[] };
@@ -54,6 +55,7 @@ export async function listNotebooks(): Promise<NotebookSummary[]> {
 export async function getNotebook(notebookId: string): Promise<NotebookDetail> {
   const response = await fetch(apiUrl(`/api/v1/notebook/${notebookId}`), {
     cache: "no-store",
+    credentials: "include",
   });
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   return (await response.json()) as NotebookDetail;
@@ -193,6 +195,7 @@ export async function getNotebookEntry(
     apiUrl(`/api/v1/question-notebook/entries/${entryId}`),
     {
       cache: "no-store",
+    credentials: "include",
     },
   );
   return expectJson<NotebookEntry>(response);
@@ -301,6 +304,7 @@ export async function removeEntryFromCategory(
 export async function listCategories(): Promise<NotebookCategory[]> {
   const response = await fetch(apiUrl("/api/v1/question-notebook/categories"), {
     cache: "no-store",
+    credentials: "include",
   });
   return expectJson<NotebookCategory[]>(response);
 }
