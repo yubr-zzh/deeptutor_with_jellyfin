@@ -82,7 +82,7 @@ export default function RegisterPage() {
             </label>
             <input
               id="username"
-              type="email"
+              type="text"
               autoComplete="email"
               required
               value={username}

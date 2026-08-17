@@ -78,7 +78,7 @@ function LoginPageContent() {
             </label>
             <input
               id="username"
-              type="email"
+              type="text"
               autoComplete="email"
               required
               value={username}
