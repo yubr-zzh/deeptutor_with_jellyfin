@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   Bot,
