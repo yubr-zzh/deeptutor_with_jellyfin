@@ -1,6 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef,   // Redirect to login when auth is enabled but user is not authenticated
+  useEffect(() => {
+    if (!AUTH_ENABLED) return;
+    fetchAuthStatus().then((status) => {
+      if (!status?.authenticated) {
+        router.replace("/login?next=" + encodeURIComponent(window.location.pathname));
+      }
+    });
+  }, []);
+
+  useState } from "react";
 import {
   BrainCircuit,
   ChevronDown,

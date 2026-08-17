@@ -13,6 +13,7 @@ const BASE = "/api/v1/book";
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(`${BASE}${path}`), {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    credentials: "include",
     ...init,
   });
   if (!res.ok) {
