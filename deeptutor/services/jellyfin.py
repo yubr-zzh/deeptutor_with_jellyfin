@@ -297,25 +297,92 @@ class JellyfinClient:
             body={"AutoOpenLiveStream": False},
         )
 
-    def direct_stream_url(self, item_id: str) -> str:
-        """Build the Jellyfin direct-stream URL for an item.
+    # Codecs that browsers can play natively via <video> tag.
+    # Reference: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs
+    _BROWSER_VIDEO_CODECS = {"h264", "vp8", "vp9", "av1"}
+    _BROWSER_AUDIO_CODECS = {"aac", "mp3", "opus", "vorbis", "flac"}
+    _BROWSER_CONTAINERS = {"mp4", "webm", "ogg"}
 
-        ``static=true`` forces direct streaming (no transcode) — our upload
-        pipeline normalises to H.264/AAC so browsers can play it natively.
+    def _media_info(self, item_id: str) -> tuple[dict, dict]:
+        """Return ``(source, stream_summary)`` for an item.
+
+        ``stream_summary`` has keys: container, video_codec, audio_codec,
+        width, height, needs_transcode (bool).
+        """
+        info = self.playback_info(item_id)
+        sources = (info or {}).get("MediaSources") or []
+        if not sources:
+            return {}, {}
+        src = sources[0]
+        vcodec = acodec = container = ""
+        width = height = 0
+        for st in src.get("MediaStreams", []):
+            if st.get("Type") == "Video":
+                vcodec = (st.get("Codec") or "").lower()
+                width = st.get("Width") or 0
+                height = st.get("Height") or 0
+            elif st.get("Type") == "Audio":
+                acodec = (st.get("Codec") or "").lower()
+        container = (src.get("Container") or "").lower()
+        # Container can be a comma-list like "mov,mp4,m4a,3gp,3g2,mj2";
+        # check if any browser-friendly token appears in it.
+        container_ok = any(c in container for c in self._BROWSER_CONTAINERS)
+        needs = (
+            vcodec not in self._BROWSER_VIDEO_CODECS
+            or acodec not in self._BROWSER_AUDIO_CODECS
+            or not container_ok
+        )
+        return src, {
+            "container": container,
+            "video_codec": vcodec,
+            "audio_codec": acodec,
+            "width": width,
+            "height": height,
+            "needs_transcode": needs,
+        }
+
+    def stream_url(self, item_id: str) -> tuple[str, dict]:
+        """Build the best streaming URL for an item.
+
+        Returns ``(url, media_info)``.  When the source is browser-compatible
+        (H.264/AAC/MP4 etc.) a direct-stream URL is used (zero CPU overhead).
+        Otherwise a transcode URL is requested from Jellyfin, which will
+        remux/re-encode on the fly via its built-in ffmpeg.
+
         The api_key travels server-side only; the frontend never sees it.
         """
         from urllib.parse import urlencode
 
-        info = self.playback_info(item_id)
-        sources = (info or {}).get("MediaSources") or []
-        source_id = sources[0]["Id"] if sources else item_id
+        source, media = self._media_info(item_id)
+        source_id = source.get("Id") or item_id
+
+        if not media.get("needs_transcode"):
+            # Direct stream — static=true, no transcode, minimal server load.
+            qs = urlencode({
+                "static": "true",
+                "mediaSourceId": source_id,
+                "api_key": self.api_key,
+                "deviceId": "deeptutor-web",
+            })
+            return f"{self.base_url.rstrip('/')}/Videos/{item_id}/stream?{qs}", media
+
+        # Transcode path — let Jellyfin pick the best profile.
+        # We request H.264/AAC in MP4 container which all browsers support.
         qs = urlencode({
-            "static": "true",
+            "static": "false",
             "mediaSourceId": source_id,
             "api_key": self.api_key,
             "deviceId": "deeptutor-web",
+            "VideoCodec": "h264",
+            "AudioCodec": "aac",
+            "Container": "mp4",
         })
-        return f"{self.base_url.rstrip('/')}/Videos/{item_id}/stream?{qs}"
+        return f"{self.base_url.rstrip('/')}/Videos/{item_id}/stream?{qs}", media
+
+    def direct_stream_url(self, item_id: str) -> str:
+        """Backward-compatible wrapper — returns URL only (direct or transcode)."""
+        url, _ = self.stream_url(item_id)
+        return url
 
 
 _client: JellyfinClient | None = None
