@@ -13,6 +13,8 @@ import {
   LayoutGrid,
   Library,
   MessageSquare,
+  Moon,
+  Sun,
   PanelLeftClose,
   PanelLeftOpen,
   PenLine,
@@ -73,6 +75,21 @@ const SECONDARY_NAV: NavEntry[] = [
 ];
 const DEFAULT_SESSION_VIEWPORT_CLASS_NAME = "max-h-[112px]";
 const GITHUB_REPO_URL = "https://github.com/HKUDS/DeepTutor";
+
+function ThemeToggleButton() {
+  const { theme, setTheme } = useAppShell();
+  const isDark = theme === "dark";
+  return (
+    <button
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted-foreground)] transition-colors hover:bg-[var(--background)]/80"
+      title={isDark ? "切换到浅色模式" : "切换到深色模式"}
+      aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
+    >
+      {isDark ? <Sun size={17} /> : <Moon size={17} />}
+    </button>
+  );
+}
 
 interface SidebarShellProps {
   sessions?: SessionSummary[];
@@ -196,6 +213,7 @@ export function SidebarShell({
         >
           <Menu size={18} />
         </button>
+        <ThemeToggleButton />
         <div className="flex-1" />
 
         {/* Secondary nav + footer */}
