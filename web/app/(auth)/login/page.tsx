@@ -54,14 +54,14 @@ function LoginPageContent() {
           DeepTutor
         </h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Sign in to your account
+          登录 to your account
         </p>
       </div>
 
       {/* Registered success notice */}
       {registered && (
         <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-600 dark:text-green-400">
-          Account created! Sign in to continue.
+          Account created! 登录 to continue.
         </div>
       )}
 
@@ -133,7 +133,7 @@ function LoginPageContent() {
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-opacity"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Signing in…" : "登录"}
           </button>
         </form>
       </div>

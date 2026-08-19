@@ -34,7 +34,7 @@ export default function RegisterPage() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("两次输入的密码不一致");
       return;
     }
 
@@ -44,7 +44,7 @@ export default function RegisterPage() {
     if (result.ok) {
       router.replace("/login?registered=1");
     } else {
-      setError(result.error ?? "Registration failed");
+      setError(result.error ?? "注册失败");
       setLoading(false);
     }
   }
@@ -164,7 +164,7 @@ export default function RegisterPage() {
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-opacity"
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? "Creating account…" : "注册"}
           </button>
         </form>
       </div>
