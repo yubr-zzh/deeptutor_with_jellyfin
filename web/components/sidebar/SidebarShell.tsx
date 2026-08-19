@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useAppShell } from "@/context/AppShellContext";
 import {
   BookOpen,
   Bot,
+  Menu,
   Github,
   LayoutGrid,
   Library,
@@ -101,6 +102,7 @@ export function SidebarShell({
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } =
     useAppShell();
 
@@ -187,6 +189,13 @@ export function SidebarShell({
           })}
         </nav>
 
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted-foreground)] transition-colors hover:bg-[var(--background)]/80 md:hidden"
+          aria-label="展开菜单"
+        >
+          <Menu size={18} />
+        </button>
         <div className="flex-1" />
 
         {/* Secondary nav + footer */}
@@ -231,7 +240,19 @@ export function SidebarShell({
 
   /* ---- Expanded state ---- */
   return (
-    <aside className="hidden md:flex w-[220px] h-screen shrink-0 flex-col bg-[var(--secondary)] transition-all duration-200">
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <aside
+        className={`fixed z-50 h-screen w-[280px] shrink-0 flex-col bg-[var(--secondary)] transition-transform duration-200 md:relative md:z-auto md:flex md:w-[220px] ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
       {/* Header: logo + collapse toggle */}
       <div className="flex h-14 items-center justify-between px-4">
         <Link href="/" className="group flex items-center gap-2">
@@ -350,5 +371,6 @@ export function SidebarShell({
         </div>
       </div>
     </aside>
+    </>
   );
 }

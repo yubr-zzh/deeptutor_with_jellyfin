@@ -406,7 +406,7 @@ export default function CourseDetailPage() {
                       if (v.currentTime > 0 && v.currentTime % 5 < 1) {
                         saveProgress(playerVideo.id, v.currentTime);
                         // Mark as watched when > 50% played
-                        if (v.duration > 0 && v.currentTime / v.duration > 0.5) {
+                        if (v.duration > 0 && v.currentTime / v.duration > 0.8) {
                           if (!watchedSet.has(playerVideo.id)) {
                             setWatchedSet(prev => new Set(prev).add(playerVideo.id));
                           }
