@@ -31,6 +31,7 @@ function CourseCard({ course }: { course: CourseRecord }) {
   // Calculate watched progress from localStorage
   const watchedCount = (course.videos ?? []).filter(v => {
     try {
+      if (typeof window === 'undefined') return false;
       const time = parseFloat(localStorage.getItem(`dt_progress_${course.id}_${v.id}`) ?? '0');
       return time > 0;
     } catch { return false; }
@@ -94,6 +95,7 @@ function CourseCard({ course }: { course: CourseRecord }) {
 export default function CoursesPage() {
   const router = useRouter();
   const [courses, setCourses] = useState<CourseRecord[]>([]);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,7 +103,9 @@ export default function CoursesPage() {
     setLoading(true);
     setError("");
     try {
-      setCourses(await listCourses());
+      const data = await listCourses();
+      setCourses(data);
+      try { localStorage.setItem('dt_course_count', String(data.length)); } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载课程失败");
     } finally {
@@ -155,12 +159,13 @@ export default function CoursesPage() {
         </header>
 
         {/* Continue learning banner */}
-        {(() => {
+        {!bannerDismissed && (() => {
           // Find the most recently watched course+video from localStorage
           let lastCourse: CourseRecord | null = null;
           let lastVideoId = "";
           let lastTime = 0;
           let lastWatched = 0;
+          if (typeof window === 'undefined') return null;
           for (const c of courses) {
             for (const v of (c.videos ?? [])) {
               try {
@@ -200,6 +205,13 @@ export default function CoursesPage() {
                   继续观看 <span aria-hidden="true">→</span>
                 </div>
               </div>
+              <button
+                onClick={(e) => { e.preventDefault(); setBannerDismissed(true); }}
+                className="shrink-0 rounded-md p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--border)]"
+                aria-label="关闭"
+              >
+                <X size={14} />
+              </button>
             </Link>
           );
         })()}
@@ -212,7 +224,7 @@ export default function CoursesPage() {
 
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {[0, 1, 2, 3].map((i) => (
+            {Array.from({ length: parseInt(localStorage.getItem('dt_course_count') ?? '4') }, (_, i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
                 <div className="h-40 animate-pulse bg-[var(--border)]" />
                 <div className="p-4">
