@@ -240,8 +240,33 @@ export default function CourseDetailPage() {
                     src={videoStreamUrl(courseId, playerVideo.id)}
                     controls
                     autoPlay
-                    className="aspect-video w-full"
+                    tabIndex={0}
+                    className="aspect-video w-full outline-none"
                     onError={() => setPlayError("视频加载失败，请刷新重试或联系管理员")}
+                    onKeyDown={(e) => {
+                      const v = playerRef.current;
+                      if (!v) return;
+                      switch (e.key) {
+                        case " ":
+                        case "k":
+                          e.preventDefault();
+                          if (v.paused) v.play(); else v.pause();
+                          break;
+                        case "ArrowLeft":
+                          e.preventDefault();
+                          v.currentTime = Math.max(0, v.currentTime - 5);
+                          break;
+                        case "ArrowRight":
+                          e.preventDefault();
+                          v.currentTime = Math.min(v.duration || 0, v.currentTime + 5);
+                          break;
+                        case "f":
+                          e.preventDefault();
+                          if (document.fullscreenElement) document.exitFullscreen();
+                          else v.requestFullscreen();
+                          break;
+                      }
+                    }}
                   />
                 </div>
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
