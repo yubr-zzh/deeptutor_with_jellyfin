@@ -127,6 +127,15 @@ export default function CoursesPage() {
     });
   }, [router, load]);
 
+  const filteredCourses = courses.filter((c) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.title.toLowerCase().includes(q) ||
+      (c.description || "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="mx-auto max-w-5xl px-6 py-10">
