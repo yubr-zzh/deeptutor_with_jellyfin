@@ -160,13 +160,71 @@ export default function CourseDetailPage() {
     }
   }, [currentVideo?.id]);
 
+  // Restore saved progress when a new video loads
+  useEffect(() => {
+    if (!playerVideo) return;
+    const player = playerRef.current;
+    if (!player) return;
+    const saved = loadProgress(playerVideo.id);
+    if (saved > 5) {
+      const onLoaded = () => {
+        player.currentTime = saved;
+        player.removeEventListener("loadedmetadata", onLoaded);
+      };
+      player.addEventListener("loadedmetadata", onLoaded);
+      return () => player.removeEventListener("loadedmetadata", onLoaded);
+    }
+  }, [playerVideo?.id]);
+
+  function saveProgress(videoId: string, time: number) {
+    try {
+      localStorage.setItem(`dt_progress_${courseId}_${videoId}`, String(time));
+    } catch {}
+  }
+
+  function loadProgress(videoId: string): number {
+    try {
+      const v = localStorage.getItem(`dt_progress_${courseId}_${videoId}`);
+      return v ? parseFloat(v) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   function selectVideo(video: CourseVideoRecord) {
+    // Save progress of current video before switching
+    if (currentVideo && playerRef.current) {
+      saveProgress(currentVideo.id, playerRef.current.currentTime);
+    }
     setCurrentVideo(video);
     setPlayError("");
     const player = playerRef.current;
     if (player) {
       player.load();
+      // Restore progress after metadata loads
+      const saved = loadProgress(video.id);
+      if (saved > 5) {
+        player.addEventListener("loadedmetadata", function onLoaded() {
+          player.removeEventListener("loadedmetadata", onLoaded);
+          player.currentTime = saved;
+        }, { once: true });
+      }
     }
+  }
+
+  // Get next playable video
+  function getNextVideo(): CourseVideoRecord | null {
+    if (!currentVideo || !course) return null;
+    const vids = (course.videos ?? []).filter(v => v.status === "indexed");
+    const idx = vids.findIndex(v => v.id === currentVideo.id);
+    return idx >= 0 && idx < vids.length - 1 ? vids[idx + 1] : null;
+  }
+
+  function getPrevVideo(): CourseVideoRecord | null {
+    if (!currentVideo || !course) return null;
+    const vids = (course.videos ?? []).filter(v => v.status === "indexed");
+    const idx = vids.findIndex(v => v.id === currentVideo.id);
+    return idx > 0 ? vids[idx - 1] : null;
   }
 
   // Global keyboard shortcuts for video playback
@@ -305,16 +363,51 @@ export default function CourseDetailPage() {
                     autoPlay
                     className="aspect-video w-full"
                     onError={() => setPlayError("视频加载失败，请刷新重试或联系管理员")}
+                    onTimeUpdate={(e) => {
+                      const v = e.currentTarget;
+                      if (v.currentTime > 0 && v.currentTime % 5 < 1) {
+                        saveProgress(playerVideo.id, v.currentTime);
+                      }
+                    }}
+                    onEnded={() => {
+                      saveProgress(playerVideo.id, playerRef.current?.duration || 0);
+                      const next = getNextVideo();
+                      if (next) {
+                        selectVideo(next);
+                      }
+                    }}
                   />
                 </div>
-                <div className="mt-3 flex items-center gap-3 flex-wrap">
-                  <span className="text-[14px] font-medium text-[var(--foreground)]">
-                    {playerVideo.episode}. {playerVideo.title}
-                  </span>
-                  <EpisodeStatus status={playerVideo.status} />
-                  <span className="text-[12px] text-[var(--muted-foreground)]">
-                    {formatBytes(playerVideo.size_bytes)}
-                  </span>
+                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[14px] font-medium text-[var(--foreground)]">
+                      {playerVideo.episode}. {playerVideo.title}
+                    </span>
+                    <EpisodeStatus status={playerVideo.status} />
+                    <span className="text-[12px] text-[var(--muted-foreground)]">
+                      {formatBytes(playerVideo.size_bytes)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getPrevVideo() && (
+                      <button
+                        onClick={() => selectVideo(getPrevVideo()!)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)]"
+                      >
+                        <ChevronLeft size={14} /> 上一集
+                      </button>
+                    )}
+                    {getNextVideo() ? (
+                      <button
+                        onClick={() => selectVideo(getNextVideo()!)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                      >
+                        下一集 <ChevronRight size={14} />
+                      </button>
+                    ) : (
+                      <span className="text-[12px] text-[var(--muted-foreground)]">已是最后一集</span>
+                    )}
+                  </div>
                 </div>
                 {playError && (
                   <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12.5px] text-red-400">
