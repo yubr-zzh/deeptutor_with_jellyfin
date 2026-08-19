@@ -128,6 +128,7 @@ export function SidebarShell({
               alt="DeepTutor"
               width={22}
               height={22}
+              unoptimized
               className="h-[22px] w-[22px] rounded-md"
             />
           </Link>
@@ -230,7 +231,7 @@ export function SidebarShell({
 
   /* ---- Expanded state ---- */
   return (
-    <aside className="flex w-[220px] h-screen shrink-0 flex-col bg-[var(--secondary)] transition-all duration-200">
+    <aside className="hidden md:flex w-[220px] h-screen shrink-0 flex-col bg-[var(--secondary)] transition-all duration-200">
       {/* Header: logo + collapse toggle */}
       <div className="flex h-14 items-center justify-between px-4">
         <Link href="/" className="group flex items-center gap-2">
@@ -239,6 +240,7 @@ export function SidebarShell({
             alt="DeepTutor"
             width={22}
             height={22}
+            unoptimized
             className="h-[22px] w-[22px] transition-transform duration-200 group-hover:scale-105"
           />
           <span className="text-[16px] font-semibold leading-none tracking-[-0.02em] text-[var(--foreground)]">
