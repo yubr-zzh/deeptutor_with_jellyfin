@@ -169,6 +169,69 @@ export default function CourseDetailPage() {
     }
   }
 
+  // Global keyboard shortcuts for video playback
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip when typing in input/textarea/contenteditable
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+
+      const v = playerRef.current;
+      if (!v) return;
+      const key = e.key.toLowerCase();
+
+      // Skip if modifier keys are pressed (Ctrl+F etc)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          if (v.paused) v.play(); else v.pause();
+          break;
+        case "j":
+          e.preventDefault();
+          v.currentTime = Math.max(0, v.currentTime - 10);
+          break;
+        case "l":
+          e.preventDefault();
+          v.currentTime = Math.min(v.duration || 0, v.currentTime + 10);
+          break;
+        case "arrowleft":
+          e.preventDefault();
+          v.currentTime = Math.max(0, v.currentTime - 5);
+          break;
+        case "arrowright":
+          e.preventDefault();
+          v.currentTime = Math.min(v.duration || 0, v.currentTime + 5);
+          break;
+        case "arrowup":
+          e.preventDefault();
+          v.volume = Math.min(1, v.volume + 0.05);
+          break;
+        case "arrowdown":
+          e.preventDefault();
+          v.volume = Math.max(0, v.volume - 0.05);
+          break;
+        case "m":
+          e.preventDefault();
+          v.muted = !v.muted;
+          break;
+        case "f":
+          e.preventDefault();
+          if (document.fullscreenElement) document.exitFullscreen();
+          else {
+            const container = v.parentElement;
+            if (container?.requestFullscreen) container.requestFullscreen();
+          }
+          break;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-[var(--muted-foreground)]">
@@ -240,33 +303,8 @@ export default function CourseDetailPage() {
                     src={videoStreamUrl(courseId, playerVideo.id)}
                     controls
                     autoPlay
-                    tabIndex={0}
-                    className="aspect-video w-full outline-none"
+                    className="aspect-video w-full"
                     onError={() => setPlayError("视频加载失败，请刷新重试或联系管理员")}
-                    onKeyDown={(e) => {
-                      const v = playerRef.current;
-                      if (!v) return;
-                      switch (e.key) {
-                        case " ":
-                        case "k":
-                          e.preventDefault();
-                          if (v.paused) v.play(); else v.pause();
-                          break;
-                        case "ArrowLeft":
-                          e.preventDefault();
-                          v.currentTime = Math.max(0, v.currentTime - 5);
-                          break;
-                        case "ArrowRight":
-                          e.preventDefault();
-                          v.currentTime = Math.min(v.duration || 0, v.currentTime + 5);
-                          break;
-                        case "f":
-                          e.preventDefault();
-                          if (document.fullscreenElement) document.exitFullscreen();
-                          else v.requestFullscreen();
-                          break;
-                      }
-                    }}
                   />
                 </div>
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
