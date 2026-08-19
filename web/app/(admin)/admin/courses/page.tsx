@@ -78,7 +78,7 @@ export default function AdminCoursesPage() {
   }
 
   async function handleDelete(course: CourseRecord) {
-    if (!window.confirm(`删除课程「${course.title}」？视频文件将一并删除。`)) return;
+    if (!window.confirm(`确定删除课程「${course.title}」？\n\n此操作不可撤销，所有视频文件将一并删除。`)) return;
     try {
       await deleteCourse(course.id);
       setCourses((prev) => prev.filter((c) => c.id !== course.id));

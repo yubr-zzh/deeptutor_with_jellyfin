@@ -134,7 +134,7 @@ export default function AdminCourseDetailPage() {
   }
 
   async function handleDeleteVideo(video: CourseVideoRecord) {
-    if (!window.confirm(`删除视频「${video.title}」？`)) return;
+    if (!window.confirm(`确定删除视频「${video.title}」？\n\n此操作不可撤销。`)) return;
     try {
       await deleteVideo(courseId, video.id);
       setCourse(await getCourse(courseId));
