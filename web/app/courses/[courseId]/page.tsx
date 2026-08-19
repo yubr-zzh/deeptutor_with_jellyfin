@@ -196,6 +196,7 @@ export default function CourseDetailPage() {
   function saveProgress(videoId: string, time: number) {
     try {
       localStorage.setItem(`dt_progress_${courseId}_${videoId}`, String(time));
+      localStorage.setItem(`dt_watched_ts_${courseId}_${videoId}`, String(Date.now()));
     } catch {}
   }
 

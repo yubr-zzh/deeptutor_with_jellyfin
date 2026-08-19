@@ -154,6 +154,56 @@ export default function CoursesPage() {
           </div>
         </header>
 
+        {/* Continue learning banner */}
+        {(() => {
+          // Find the most recently watched course+video from localStorage
+          let lastCourse: CourseRecord | null = null;
+          let lastVideoId = "";
+          let lastTime = 0;
+          let lastWatched = 0;
+          for (const c of courses) {
+            for (const v of (c.videos ?? [])) {
+              try {
+                const t = parseFloat(localStorage.getItem(`dt_progress_${c.id}_${v.id}`) ?? '0');
+                const ts = parseInt(localStorage.getItem(`dt_watched_ts_${c.id}_${v.id}`) ?? '0');
+                if (ts > lastWatched && t > 5) {
+                  lastWatched = ts;
+                  lastCourse = c;
+                  lastVideoId = v.id;
+                  lastTime = t;
+                }
+              } catch {}
+            }
+          }
+          if (!lastCourse || !lastVideoId) return null;
+          const mins = Math.floor(lastTime / 60);
+          const secs = Math.floor(lastTime % 60);
+          return (
+            <Link
+              href={`/courses/${lastCourse.id}`}
+              className="group mb-6 flex items-center gap-4 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-5 py-4 transition-all hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/8"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/15">
+                <PlayCircle size={22} className="text-[var(--primary)]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--primary)]">继续上次学习</div>
+                <div className="mt-0.5 truncate text-[14px] font-semibold text-[var(--foreground)]">
+                  {lastCourse.title}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-[12px] text-[var(--muted-foreground)]">
+                  停在 {mins}:{secs.toString().padStart(2, '0')}
+                </div>
+                <div className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-[var(--primary)]">
+                  继续观看 <span aria-hidden="true">→</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })()}
+
         {error && (
           <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">
             {error}
