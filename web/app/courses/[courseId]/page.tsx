@@ -25,6 +25,8 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 function EpisodeStatus({ status }: { status: CourseVideoRecord["status"] }) {
@@ -128,24 +130,42 @@ export default function CourseDetailPage() {
   const playerRef = useRef<HTMLVideoElement>(null);
   const episodeListRef = useRef<HTMLDivElement>(null);
 
+  const videos = course?.videos ?? [];
+  const playerVideo = currentVideo ?? videos.find((v) => v.status === "indexed") ?? null;
+
   const load = useCallback(async () => {
     if (!courseId) return;
     setLoading(true);
     setError("");
     try {
-      // Load watched set from localStorage
+      // Load watched set from localStorage, then merge server progress (server wins).
+      // "Watched" means played >80% of duration (matches the in-player rule).
       try {
         const keys = Object.keys(localStorage).filter(k => k.startsWith(`dt_progress_${courseId}_`));
         const watched = new Set<string>();
         for (const key of keys) {
           const vid = key.split('_').pop()!;
           const time = parseFloat(localStorage.getItem(key) || '0');
-          if (time > 0) watched.add(vid);
+          const dur = parseFloat(localStorage.getItem(`dt_duration_${courseId}_${vid}`) || '0');
+          if (dur > 0 && time / dur > 0.8) watched.add(vid);
+        }
+        // Cross-device sync: pull server progress and fold it into localStorage
+        const serverProgress = await loadServerProgress(courseId);
+        for (const [vid, p] of Object.entries(serverProgress)) {
+          if (p.duration > 0 && p.position / p.duration > 0.8) {
+            watched.add(vid);
+            try {
+              localStorage.setItem(`dt_progress_${courseId}_${vid}`, String(p.position));
+              localStorage.setItem(`dt_duration_${courseId}_${vid}`, String(p.duration));
+              localStorage.setItem(`dt_watched_ts_${courseId}_${vid}`, String(p.updated_at || Date.now()));
+            } catch {}
+          }
         }
         setWatchedSet(watched);
       } catch {}
       const c = await getCourse(courseId);
       setCourse(c);
+      backfillProgress();
       const firstPlayable = c.videos?.find((v) => v.status === "indexed") ?? null;
       if (firstPlayable && !currentVideo) {
         setCurrentVideo(firstPlayable);
@@ -200,10 +220,35 @@ export default function CourseDetailPage() {
       localStorage.setItem(`dt_progress_${courseId}_${videoId}`, String(time));
       localStorage.setItem(`dt_watched_ts_${courseId}_${videoId}`, String(Date.now()));
     } catch {}
-    // Server-side persistence (fire-and-forget)
+    // Server-side persistence (fire-and-forget); mark synced on success
     if (time > 5 && duration > 0) {
-      void saveServerProgress(courseId, videoId, time, duration);
+      void saveServerProgress(courseId, videoId, time, duration).then(() => {
+        try { localStorage.setItem(`dt_synced_${courseId}_${videoId}`, "1"); } catch {}
+      }).catch(() => {
+        try { localStorage.removeItem(`dt_synced_${courseId}_${videoId}`); } catch {}
+      });
     }
+  }
+
+  // Backfill: push any local-only progress (written offline) to the server.
+  // Called after auth check + course load; fire-and-forget, best effort.
+  function backfillProgress() {
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(`dt_progress_${courseId}_`));
+      for (const key of keys) {
+        const vid = key.split('_').pop()!;
+        const synced = localStorage.getItem(`dt_synced_${courseId}_${vid}`);
+        if (synced) continue; // already on server
+        const time = parseFloat(localStorage.getItem(key) || '0');
+        const durKey = `dt_duration_${courseId}_${vid}`;
+        const duration = parseFloat(localStorage.getItem(durKey) || '0');
+        if (time > 5 && duration > 0) {
+          void saveServerProgress(courseId, vid, time, duration).then(() => {
+            try { localStorage.setItem(`dt_synced_${courseId}_${vid}`, "1"); } catch {}
+          }).catch(() => { /* offline again — try next time */ });
+        }
+      }
+    } catch {}
   }
 
   function loadProgress(videoId: string): number {
@@ -350,9 +395,6 @@ export default function CourseDetailPage() {
     );
   }
 
-  const videos = course.videos ?? [];
-  const playerVideo = currentVideo ?? videos.find((v) => v.status === "indexed") ?? null;
-
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="mx-auto max-w-6xl px-6 py-8">
@@ -410,6 +452,7 @@ export default function CourseDetailPage() {
                     onTimeUpdate={(e) => {
                       const v = e.currentTarget;
                       if (v.currentTime > 0 && v.currentTime % 5 < 1) {
+                        try { localStorage.setItem(`dt_duration_${courseId}_${playerVideo.id}`, String(v.duration)); } catch {}
                         saveProgress(playerVideo.id, v.currentTime, v.duration);
                         // Mark as watched when > 50% played
                         if (v.duration > 0 && v.currentTime / v.duration > 0.8) {
