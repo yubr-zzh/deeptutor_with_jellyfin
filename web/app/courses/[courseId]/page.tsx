@@ -117,6 +117,7 @@ export default function CourseDetailPage() {
   const [currentVideo, setCurrentVideo] = useState<CourseVideoRecord | null>(null);
   const [playError, setPlayError] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const playerRef = useRef<HTMLVideoElement>(null);
   const episodeListRef = useRef<HTMLDivElement>(null);
 
@@ -275,6 +276,26 @@ export default function CourseDetailPage() {
           e.preventDefault();
           v.muted = !v.muted;
           break;
+        case ",":
+          e.preventDefault();
+          {
+            const speeds = [1, 1.25, 1.5, 2];
+            const cur = speeds.indexOf(v.playbackRate);
+            const next = speeds[Math.max(0, cur - 1)];
+            v.playbackRate = next;
+            setPlaybackRate(next);
+          }
+          break;
+        case ".":
+          e.preventDefault();
+          {
+            const speeds = [1, 1.25, 1.5, 2];
+            const cur = speeds.indexOf(v.playbackRate);
+            const next = speeds[Math.min(speeds.length - 1, cur + 1)];
+            v.playbackRate = next;
+            setPlaybackRate(next);
+          }
+          break;
         case "f":
           e.preventDefault();
           if (document.fullscreenElement) document.exitFullscreen();
@@ -387,6 +408,25 @@ export default function CourseDetailPage() {
                     <span className="text-[12px] text-[var(--muted-foreground)]">
                       {formatBytes(playerVideo.size_bytes)}
                     </span>
+                    {/* Playback speed selector */}
+                    <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] px-1 py-0.5">
+                      {([1, 1.25, 1.5, 2] as const).map((speed) => (
+                        <button
+                          key={speed}
+                          onClick={() => {
+                            if (playerRef.current) playerRef.current.playbackRate = speed;
+                            setPlaybackRate(speed);
+                          }}
+                          className={`rounded px-1.5 py-0.5 text-[11px] transition-colors ${
+                            playbackRate === speed
+                              ? "bg-[var(--primary)] text-white"
+                              : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {speed}x
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {getPrevVideo() && (
