@@ -139,6 +139,14 @@ class CourseStore:
                     created_at REAL NOT NULL,
                     UNIQUE (course_id, episode)
                 );
+                CREATE TABLE IF NOT EXISTS video_progress (
+                    user_id TEXT NOT NULL,
+                    video_id TEXT NOT NULL REFERENCES course_videos(id) ON DELETE CASCADE,
+                    position REAL NOT NULL DEFAULT 0,
+                    duration REAL NOT NULL DEFAULT 0,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (user_id, video_id)
+                );
                 """
             )
 
@@ -248,6 +256,50 @@ class CourseStore:
                 (course_id,),
             ).fetchone()
         return int(row["m"]) + 1
+
+    # ------------------------------------------------------------------
+    # Video progress (per-user, server-side)
+    # ------------------------------------------------------------------
+    def set_video_progress(self, *, user_id: str, video_id: str, position: float, duration: float) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """INSERT INTO video_progress (user_id, video_id, position, duration, updated_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(user_id, video_id)
+                   DO UPDATE SET position = excluded.position,
+                                 duration = excluded.duration,
+                                 updated_at = excluded.updated_at""",
+                (user_id, video_id, position, duration, time.time()),
+            )
+
+    def get_video_progress(self, *, user_id: str, video_id: str) -> dict[str, float] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT position, duration, updated_at FROM video_progress WHERE user_id = ? AND video_id = ?",
+                (user_id, video_id),
+            ).fetchone()
+        if not row:
+            return None
+        return {"position": row["position"], "duration": row["duration"], "updated_at": row["updated_at"]}
+
+    def get_course_progress(self, *, user_id: str, course_id: str) -> dict[str, dict[str, float]]:
+        """Return {video_id: {position, duration, updated_at}} for all videos in a course."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT vp.video_id, vp.position, vp.duration, vp.updated_at
+                   FROM video_progress vp
+                   JOIN course_videos cv ON cv.id = vp.video_id
+                   WHERE vp.user_id = ? AND cv.course_id = ?""",
+                (user_id, course_id),
+            ).fetchall()
+        return {
+            row["video_id"]: {
+                "position": row["position"],
+                "duration": row["duration"],
+                "updated_at": row["updated_at"],
+            }
+            for row in rows
+        }
 
     @staticmethod
     def _video_from_row(row: sqlite3.Row) -> CourseVideo:

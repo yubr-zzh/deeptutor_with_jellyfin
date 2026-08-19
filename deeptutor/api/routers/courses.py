@@ -298,3 +298,48 @@ async def delete_video(course_id: str, video_id: str):
     with store._connect() as conn:
         conn.execute("DELETE FROM course_videos WHERE id = ?", (video_id,))
     return {"deleted": video_id}
+
+
+# ---------------------------------------------------------------------------
+# Video progress (server-side persistence, per-user)
+# ---------------------------------------------------------------------------
+
+
+def _current_user_id(request: Request) -> str:
+    """Extract user_id from JWT when auth is on; 'local' otherwise."""
+    from deeptutor.services.auth import AUTH_ENABLED, decode_token
+
+    if not AUTH_ENABLED:
+        return "local"
+    cookie_token = request.cookies.get("dt_token") or ""
+    authz = request.headers.get("Authorization", "")
+    bearer = authz.split(None, 1)[1].strip() if authz.lower().startswith("bearer ") else ""
+    query_token = request.query_params.get("token", "")
+    payload = decode_token(query_token or bearer or cookie_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return getattr(payload, "user_id", "") or getattr(payload, "username", "local")
+
+
+@router.put("/courses/{course_id}/videos/{video_id}/progress", dependencies=[Depends(_require_course_read)])
+async def save_progress(course_id: str, video_id: str, request: Request):
+    body = await request.json()
+    position = float(body.get("position", 0) or 0)
+    duration = float(body.get("duration", 0) or 0)
+    store = get_course_store()
+    video = store.get_video(video_id)
+    if not video or video.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Video not found")
+    user_id = _current_user_id(request)
+    store.set_video_progress(user_id=user_id, video_id=video_id, position=position, duration=duration)
+    return {"ok": True}
+
+
+@router.get("/courses/{course_id}/progress", dependencies=[Depends(_require_course_read)])
+async def get_progress(course_id: str, request: Request):
+    store = get_course_store()
+    course = store.get_course(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    user_id = _current_user_id(request)
+    return store.get_course_progress(user_id=user_id, course_id=course_id)
