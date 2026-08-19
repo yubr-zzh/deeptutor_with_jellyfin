@@ -473,8 +473,21 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
                 {playError && (
-                  <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12.5px] text-red-400">
-                    {playError}
+                  <div className="mt-2 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-[12.5px] text-red-400">
+                    <span className="flex-1">{playError}</span>
+                    <button
+                      onClick={() => {
+                        setPlayError("");
+                        const player = playerRef.current;
+                        if (player) {
+                          player.load();
+                          player.play();
+                        }
+                      }}
+                      className="shrink-0 rounded-md border border-red-500/30 px-2.5 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                    >
+                      重试
+                    </button>
                   </div>
                 )}
               </>
