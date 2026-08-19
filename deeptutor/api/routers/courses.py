@@ -255,7 +255,7 @@ async def stream_video(course_id: str, video_id: str, request: Request, token: s
         raise HTTPException(status_code=409, detail="Video not indexed in Jellyfin yet")
 
     client = get_jellyfin_client()
-    upstream = client.direct_stream_url(video.jellyfin_item_id)
+    upstream, media_info = client.stream_url(video.jellyfin_item_id)
 
     # Forward Range header for seek support; stream chunks without buffering.
     headers = {}
@@ -269,14 +269,20 @@ async def stream_video(course_id: str, video_id: str, request: Request, token: s
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stream proxy failed: {e}")
 
+    # For transcoded streams, ensure content-type is video/mp4 so the
+    # browser knows how to handle the response.
+    response_headers = {
+        k: v for k, v in resp.headers.items()
+        if k.lower() in ("content-type", "content-length", "content-range",
+                         "accept-ranges", "content-disposition")
+    }
+    if media_info.get("needs_transcode") and "content-type" not in {k.lower() for k in response_headers}:
+        response_headers["Content-Type"] = "video/mp4"
+
     return StreamingResponse(
         resp.aiter_bytes(),
         status_code=resp.status_code,
-        headers={
-            k: v for k, v in resp.headers.items()
-            if k.lower() in ("content-type", "content-length", "content-range",
-                             "accept-ranges", "content-disposition")
-        },
+        headers=response_headers,
     )
 
 
