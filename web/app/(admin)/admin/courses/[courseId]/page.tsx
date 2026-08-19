@@ -67,6 +67,10 @@ export default function AdminCourseDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadError, setUploadError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+  const ALLOWED_TYPES = ["video/mp4", "video/webm", "video/x-matroska", "video/avi", "video/quicktime", "video/x-msvideo", "video/mpeg"];
+  const ALLOWED_EXTS = [".mp4", ".webm", ".mkv", ".avi", ".mov", ".mpg", ".mpeg"];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -103,6 +107,16 @@ export default function AdminCourseDetailPage() {
 
   async function handleUpload() {
     if (!selectedFile || uploading) return;
+    // Validate file type
+    const ext = selectedFile.name.toLowerCase().match(/\.\w+$/)?.[0] ?? "";
+    if (!ALLOWED_EXTS.includes(ext) && !ALLOWED_TYPES.includes(selectedFile.type)) {
+      setUploadError(`不支持的文件格式 ${ext || selectedFile.type}，请上传 MP4/WebM/MKV/AVI/MOV`);
+      return;
+    }
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setUploadError(`文件过大 (${formatBytes(selectedFile.size)})，最大支持 2GB`);
+      return;
+    }
     setUploading(true);
     setUploadError("");
     try {
@@ -110,8 +124,10 @@ export default function AdminCourseDetailPage() {
         courseId,
         uploadTitle.trim() || selectedFile.name.replace(/\.\w+$/, ""),
         selectedFile,
+        (percent) => setUploadProgress(percent),
       );
       setSelectedFile(null);
+      setUploadProgress(0);
       setUploadTitle("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       // If scan already done, refresh; otherwise poll a bit
@@ -219,6 +235,9 @@ export default function AdminCourseDetailPage() {
               <span className="text-[12.5px] text-[var(--muted-foreground)]">
                 {selectedFile.name} ({formatBytes(selectedFile.size)})
               </span>
+              <span className="text-[11px] text-[var(--muted-foreground)]/60">
+                支持 MP4/WebM/MKV/AVI/MOV，最大 2GB
+              </span>
             )}
             <button
               onClick={() => void handleUpload()}
@@ -227,7 +246,7 @@ export default function AdminCourseDetailPage() {
             >
               {uploading ? (
                 <>
-                  <Loader2 size={15} className="animate-spin" /> 上传入库中…
+                  <Loader2 size={15} className="animate-spin" /> {uploadProgress < 100 ? `上传中 ${uploadProgress}%` : "入库处理中…"}
                 </>
               ) : (
                 <>上传并入库</>
@@ -237,6 +256,14 @@ export default function AdminCourseDetailPage() {
           <p className="mt-2 text-[12px] text-[var(--muted-foreground)]">
             支持 mp4 / mkv / webm / mov，单文件最大 4GB。上传完成后自动触发 Jellyfin 扫描入库。
           </p>
+          {uploading && uploadProgress < 100 && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+              <div
+                className="h-full rounded-full bg-[var(--primary)] transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
           {uploadError && (
             <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12.5px] text-red-400">
               {uploadError}
