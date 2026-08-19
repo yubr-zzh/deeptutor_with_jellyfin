@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import { listCourses, formatDate, type CourseRecord } from "@/lib/courses-api";
-import { BookOpen, RefreshCw, Clapperboard, FolderOpen, Plus } from "lucide-react";
+import { BookOpen, RefreshCw, Clapperboard, FolderOpen, Plus, Search, PlayCircle, X } from "lucide-react";
 
 function getCourseGradient(seed: string): string {
   const gradients = [
@@ -33,7 +33,8 @@ function CourseCard({ course }: { course: CourseRecord }) {
     try {
       if (typeof window === 'undefined') return false;
       const time = parseFloat(localStorage.getItem(`dt_progress_${course.id}_${v.id}`) ?? '0');
-      return time > 0;
+      const dur = parseFloat(localStorage.getItem(`dt_duration_${course.id}_${v.id}`) ?? '0');
+      return dur > 0 && time / dur > 0.8;
     } catch { return false; }
   }).length;
   const progressPct = videoCount > 0 ? Math.round((watchedCount / videoCount) * 100) : 0;
@@ -98,6 +99,7 @@ export default function CoursesPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,12 +160,24 @@ export default function CoursesPage() {
                 探索优质课程，随时学习
               </p>
             </div>
-            <button
-              onClick={() => void load()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--muted-foreground)] transition-all hover:border-[var(--primary)]/30 hover:text-[var(--foreground)]"
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 刷新
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="搜索课程…"
+                  className="w-44 rounded-lg border border-[var(--border)] bg-[var(--card)] py-2 pl-8 pr-3 text-[13px] text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--muted-foreground)]/60 focus:border-[var(--primary)]/40"
+                />
+              </div>
+              <button
+                onClick={() => void load()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-[13px] text-[var(--muted-foreground)] transition-all hover:border-[var(--primary)]/30 hover:text-[var(--foreground)]"
+              >
+                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> 刷新
+              </button>
+            </div>
           </div>
         </header>
 
@@ -233,7 +247,7 @@ export default function CoursesPage() {
 
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {Array.from({ length: parseInt(localStorage.getItem('dt_course_count') ?? '4') }, (_, i) => (
+            {Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
                 <div className="h-40 animate-pulse bg-[var(--border)]" />
                 <div className="p-4">
@@ -259,9 +273,23 @@ export default function CoursesPage() {
               <Plus size={14} /> 创建第一门课程
             </Link>
           </div>
+        ) : filteredCourses.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
+            <Search size={44} className="mx-auto mb-4 text-[var(--muted-foreground)]/40" />
+            <p className="text-base font-medium text-[var(--foreground)]">未找到匹配的课程</p>
+            <p className="mt-1.5 text-[13px] text-[var(--muted-foreground)]">
+              换个关键词试试，或清空搜索
+            </p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+            >
+              清空搜索
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {courses.map((course) => (
+            {filteredCourses.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>

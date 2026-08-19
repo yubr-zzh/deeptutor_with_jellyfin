@@ -111,6 +111,7 @@ class CourseStore:
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
     def _init_schema(self) -> None:
@@ -148,6 +149,11 @@ class CourseStore:
                     PRIMARY KEY (user_id, video_id)
                 );
                 """
+            )
+            # Clean up orphan progress rows (defensive: older DBs may have
+            # rows whose video was deleted before FK was enforced).
+            conn.execute(
+                "DELETE FROM video_progress WHERE video_id NOT IN (SELECT id FROM course_videos)"
             )
 
     # ------------------------------------------------------------------
