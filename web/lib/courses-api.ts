@@ -70,21 +70,37 @@ export async function uploadVideo(
   courseId: string,
   title: string,
   file: File,
-  onProgress?: (done: boolean) => void,
+  onProgress?: (percent: number) => void,
 ): Promise<CourseVideoRecord> {
   const form = new FormData();
   form.append("title", title);
   form.append("file", file);
-  const res = await fetch(apiUrl(`/api/v1/courses/${courseId}/videos`), {
-    method: "POST",
-    credentials: "include",
-    body: form,
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error("Invalid server response")); }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          reject(new Error(data.detail ?? "上传失败"));
+        } catch {
+          reject(new Error(`上传失败 (HTTP ${xhr.status})`));
+        }
+      }
+    };
+    xhr.onerror = () => reject(new Error("网络错误，上传失败"));
+    xhr.open("POST", apiUrl(`/api/v1/courses/${courseId}/videos`));
+    xhr.withCredentials = true;
+    xhr.send(form);
   });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail ?? "Failed to upload video");
-  }
-  return res.json();
 }
 
 export async function deleteVideo(courseId: string, videoId: string): Promise<void> {
