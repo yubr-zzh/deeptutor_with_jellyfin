@@ -59,11 +59,13 @@ function EpisodeItem({
   video,
   idx,
   isActive,
+  watched,
   onClick,
 }: {
   video: CourseVideoRecord;
   idx: number;
   isActive: boolean;
+  watched: boolean;
   onClick: () => void;
 }) {
   const playable = video.status === "indexed";
@@ -80,12 +82,14 @@ function EpisodeItem({
     >
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-          isActive
+          watched && !isActive
+            ? "bg-green-500/15 text-green-500"
+            : isActive
             ? "bg-[var(--primary)] text-white"
             : "bg-[var(--primary)]/10 text-[var(--primary)]"
         }`}
       >
-        {playable ? <PlayCircle size={15} /> : <Clock size={14} />}
+        {watched && !isActive ? <CheckCircle2 size={15} /> : playable ? <PlayCircle size={15} /> : <Clock size={14} />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -118,6 +122,7 @@ export default function CourseDetailPage() {
   const [playError, setPlayError] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
   const playerRef = useRef<HTMLVideoElement>(null);
   const episodeListRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +131,17 @@ export default function CourseDetailPage() {
     setLoading(true);
     setError("");
     try {
+      // Load watched set from localStorage
+      try {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith(`dt_progress_${courseId}_`));
+        const watched = new Set<string>();
+        for (const key of keys) {
+          const vid = key.split('_').pop()!;
+          const time = parseFloat(localStorage.getItem(key) || '0');
+          if (time > 0) watched.add(vid);
+        }
+        setWatchedSet(watched);
+      } catch {}
       const c = await getCourse(courseId);
       setCourse(c);
       const firstPlayable = c.videos?.find((v) => v.status === "indexed") ?? null;
@@ -388,6 +404,12 @@ export default function CourseDetailPage() {
                       const v = e.currentTarget;
                       if (v.currentTime > 0 && v.currentTime % 5 < 1) {
                         saveProgress(playerVideo.id, v.currentTime);
+                        // Mark as watched when > 50% played
+                        if (v.duration > 0 && v.currentTime / v.duration > 0.5) {
+                          if (!watchedSet.has(playerVideo.id)) {
+                            setWatchedSet(prev => new Set(prev).add(playerVideo.id));
+                          }
+                        }
                       }
                     }}
                     onEnded={() => {
@@ -496,6 +518,7 @@ export default function CourseDetailPage() {
                         video={video}
                         idx={idx}
                         isActive={currentVideo?.id === video.id || (!currentVideo && idx === 0)}
+                        watched={watchedSet.has(video.id)}
                         onClick={() => {
                           if (video.status === "indexed") {
                             selectVideo(video);
