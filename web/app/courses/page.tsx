@@ -211,9 +211,18 @@ export default function CoursesPage() {
         )}
 
         {loading ? (
-          <div className="py-20 flex flex-col items-center gap-3 text-sm text-[var(--muted-foreground)]">
-            <RefreshCw size={28} className="animate-spin text-[var(--primary)]/50" />
-            <span>正在加载课程…</span>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
+                <div className="h-40 animate-pulse bg-[var(--border)]" />
+                <div className="p-4">
+                  <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--border)]" />
+                  <div className="mt-2 h-3 w-full animate-pulse rounded bg-[var(--border)]" />
+                  <div className="mt-1.5 h-3 w-3/4 animate-pulse rounded bg-[var(--border)]" />
+                  <div className="mt-3 h-3 w-1/3 animate-pulse rounded bg-[var(--border)]" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : courses.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20 text-center">
