@@ -7,6 +7,8 @@ import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   getCourse,
   videoStreamUrl,
+  saveServerProgress,
+  loadServerProgress,
   formatBytes,
   formatDate,
   type CourseRecord,
@@ -193,11 +195,15 @@ export default function CourseDetailPage() {
     }
   }, [playerVideo?.id]);
 
-  function saveProgress(videoId: string, time: number) {
+  function saveProgress(videoId: string, time: number, duration = 0) {
     try {
       localStorage.setItem(`dt_progress_${courseId}_${videoId}`, String(time));
       localStorage.setItem(`dt_watched_ts_${courseId}_${videoId}`, String(Date.now()));
     } catch {}
+    // Server-side persistence (fire-and-forget)
+    if (time > 5 && duration > 0) {
+      void saveServerProgress(courseId, videoId, time, duration);
+    }
   }
 
   function loadProgress(videoId: string): number {
@@ -404,7 +410,7 @@ export default function CourseDetailPage() {
                     onTimeUpdate={(e) => {
                       const v = e.currentTarget;
                       if (v.currentTime > 0 && v.currentTime % 5 < 1) {
-                        saveProgress(playerVideo.id, v.currentTime);
+                        saveProgress(playerVideo.id, v.currentTime, v.duration);
                         // Mark as watched when > 50% played
                         if (v.duration > 0 && v.currentTime / v.duration > 0.8) {
                           if (!watchedSet.has(playerVideo.id)) {
@@ -414,7 +420,8 @@ export default function CourseDetailPage() {
                       }
                     }}
                     onEnded={() => {
-                      saveProgress(playerVideo.id, playerRef.current?.duration || 0);
+                      const d = playerRef.current?.duration || 0;
+                      saveProgress(playerVideo.id, d, d);
                       const next = getNextVideo();
                       if (next) {
                         selectVideo(next);

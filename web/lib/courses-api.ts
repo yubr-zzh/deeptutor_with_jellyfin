@@ -154,3 +154,38 @@ export function videoStreamUrl(courseId: string, videoId: string): string {
   const base = apiUrl(`/api/v1/courses/${courseId}/videos/${videoId}/stream`);
   return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
+
+// ── Server-side progress (per-user, persists across devices) ───────────────
+
+export async function saveServerProgress(
+  courseId: string,
+  videoId: string,
+  position: number,
+  duration: number,
+): Promise<void> {
+  try {
+    await fetch(apiUrl(`/api/v1/courses/${courseId}/videos/${videoId}/progress`), {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ position, duration }),
+    });
+  } catch {
+    /* offline / server down — silently fall back to localStorage */
+  }
+}
+
+export async function loadServerProgress(
+  courseId: string,
+): Promise<Record<string, { position: number; duration: number; updated_at: number }>> {
+  try {
+    const res = await fetch(apiUrl(`/api/v1/courses/${courseId}/progress`), {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) return {};
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
