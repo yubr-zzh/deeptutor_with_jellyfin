@@ -28,6 +28,15 @@ function CourseCard({ course }: { course: CourseRecord }) {
   const initial = course.title.charAt(0).toUpperCase();
   const gradient = getCourseGradient(course.title);
 
+  // Calculate watched progress from localStorage
+  const watchedCount = (course.videos ?? []).filter(v => {
+    try {
+      const time = parseFloat(localStorage.getItem(`dt_progress_${course.id}_${v.id}`) ?? '0');
+      return time > 0;
+    } catch { return false; }
+  }).length;
+  const progressPct = videoCount > 0 ? Math.round((watchedCount / videoCount) * 100) : 0;
+
   return (
     <Link
       href={`/courses/${course.id}`}
@@ -55,6 +64,20 @@ function CourseCard({ course }: { course: CourseRecord }) {
         <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-[var(--muted-foreground)]">
           {course.description || "暂无简介"}
         </p>
+        {videoCount > 0 && watchedCount > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
+              <span>{watchedCount}/{videoCount} 课时已学</span>
+              <span className="font-medium text-emerald-500">{progressPct}%</span>
+            </div>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--border)]">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between text-[11.5px] text-[var(--muted-foreground)]">
           <span>更新于 {formatDate(course.updated_at || course.created_at)}</span>
           {videoCount > 0 && (
