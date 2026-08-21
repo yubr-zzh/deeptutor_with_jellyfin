@@ -20,6 +20,7 @@ import {
   PenLine,
   Plus,
   Settings,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,12 @@ const PRIMARY_NAV: NavEntry[] = [
     label: "Chat",
     icon: MessageSquare,
     tooltipKey: "Chat tooltip",
+  },
+  {
+    href: "/courses",
+    label: "Course Videos",
+    icon: Video,
+    tooltipKey: "Course Videos tooltip",
   },
   {
     href: "/agents",

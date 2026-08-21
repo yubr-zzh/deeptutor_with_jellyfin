@@ -1599,6 +1599,8 @@
   "Ask a question about this page. The current chapter content is sent to the assistant automatically.": "Ask a question about this page. The current chapter content is sent to the assistant automatically.",
   "Ask about this page...": "Ask about this page...",
   "Chat tooltip": "Multi-tool AI chat and search.",
+  "Course Videos": "Course Videos",
+  "Course Videos tooltip": "Browse course videos and keep learning.",
   "TutorBot tooltip": "Persistent, specialized AI agents.",
   "Co-Writer tooltip": "AI-powered document editor.",
   "Book tooltip": "Create AI-powered books.",

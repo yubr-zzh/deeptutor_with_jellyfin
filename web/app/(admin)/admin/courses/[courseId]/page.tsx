@@ -232,12 +232,14 @@ export default function AdminCourseDetailPage() {
               className="min-w-[220px] flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[13.5px] text-[var(--foreground)] outline-none transition-colors focus:border-[var(--primary)]"
             />
             {selectedFile && (
-              <span className="text-[12.5px] text-[var(--muted-foreground)]">
-                {selectedFile.name} ({formatBytes(selectedFile.size)})
-              </span>
-              <span className="text-[11px] text-[var(--muted-foreground)]/60">
-                支持 MP4/WebM/MKV/AVI/MOV，最大 2GB
-              </span>
+              <>
+                <span className="text-[12.5px] text-[var(--muted-foreground)]">
+                  {selectedFile.name} ({formatBytes(selectedFile.size)})
+                </span>
+                <span className="text-[11px] text-[var(--muted-foreground)]/60">
+                  支持 MP4/WebM/MKV/AVI/MOV，最大 2GB
+                </span>
+              </>
             )}
             <button
               onClick={() => void handleUpload()}

@@ -40,7 +40,9 @@ function collectTests(dir) {
 
 rmSync(distRoot, { recursive: true, force: true });
 
-run(path.join(webRoot, "node_modules", ".bin", "tsc"), [
+const tscEntry = path.join(webRoot, "node_modules", "typescript", "lib", "tsc.js");
+run(process.execPath, [
+  tscEntry,
   "-p",
   "tsconfig.node-tests.json",
 ]);
@@ -51,4 +53,4 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-run(process.execPath, ["--test", ...testFiles]);
+run(process.execPath, ["--test", "--test-concurrency=1", ...testFiles]);
