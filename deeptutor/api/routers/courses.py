@@ -101,7 +101,16 @@ def _require_admin(request: Request) -> None:
 @router.get("/courses", dependencies=[Depends(_require_course_read)])
 async def list_courses():
     store = get_course_store()
-    return [c.to_dict() for c in store.list_courses()]
+    result = []
+    for c in store.list_courses():
+        item = c.to_dict()
+        with store._connect() as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) AS n FROM course_videos WHERE course_id = ?", (c.id,)
+            ).fetchone()
+        item["video_count"] = int(count["n"]) if count else 0
+        result.append(item)
+    return result
 
 
 @router.post("/courses", dependencies=[Depends(_require_admin)])
@@ -343,3 +352,64 @@ async def get_progress(course_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Course not found")
     user_id = _current_user_id(request)
     return store.get_course_progress(user_id=user_id, course_id=course_id)
+
+
+# ---------------------------------------------------------------------------
+# Course cover images (asset library)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/courses/{course_id}/cover")
+async def get_course_cover(course_id: str):
+    store = get_course_store()
+    course = store.get_course(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    cover = course.cover_path()
+    if not cover or not cover.exists():
+        raise HTTPException(status_code=404, detail="No cover image")
+    from fastapi.responses import FileResponse
+    ext = cover.suffix.lower()
+    media_type = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }.get(ext, "application/octet-stream")
+    return FileResponse(cover, media_type=media_type)
+
+
+@router.post("/courses/{course_id}/cover", dependencies=[Depends(_require_admin)])
+async def upload_course_cover(course_id: str, request: Request):
+    """Upload a cover image for a course (admin only). Stored in the covers asset library."""
+    import os
+    from pathlib import Path as _Path
+
+    store = get_course_store()
+    course = store.get_course(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    from fastapi import UploadFile, File
+    # Read the raw body as an image file
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty upload")
+
+    # Detect extension from Content-Type
+    content_type = request.headers.get("Content-Type", "")
+    ext = ".png"
+    if "jpeg" in content_type or "jpg" in content_type:
+        ext = ".jpg"
+    elif "webp" in content_type:
+        ext = ".webp"
+
+    from deeptutor.services.course_store import COVERS_DIR
+    COVERS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{course.slug}{ext}"
+    dest = COVERS_DIR / filename
+    dest.write_bytes(body)
+
+    with store._connect() as conn:
+        conn.execute("UPDATE courses SET cover_filename = ? WHERE id = ?", (filename, course_id))
+    return {"ok": True, "cover_url": f"/api/v1/courses/{course_id}/cover"}

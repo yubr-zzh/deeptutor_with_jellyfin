@@ -30,6 +30,7 @@ from deeptutor.services.path_service import get_path_service
 logger = logging.getLogger(__name__)
 
 MEDIA_ROOT = Path(os.getenv("COURSE_MEDIA_ROOT", "D:/Media"))
+COVERS_DIR = MEDIA_ROOT / "Covers"
 COURSES_SUBDIR = "Courses"
 MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024  # 4 GiB per video
 _ALLOWED_VIDEO_EXT = {".mp4", ".mkv", ".webm", ".mov", ".m4v"}
@@ -64,10 +65,21 @@ class Course:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "media_path": str(self.media_dir()),
+            "cover_url": f"/api/v1/courses/{self.id}/cover" if self.cover_path() else "",
         }
 
     def media_dir(self) -> Path:
         return MEDIA_ROOT / COURSES_SUBDIR / self.slug
+
+    def cover_path(self) -> Path | None:
+        """Return the cover image path for this course if one exists."""
+        if self.cover_filename:
+            return COVERS_DIR / self.cover_filename
+        for ext in (".png", ".jpg", ".jpeg", ".webp"):
+            candidate = COVERS_DIR / f"{self.slug}{ext}"
+            if candidate.exists():
+                return candidate
+        return None
 
 
 @dataclass
@@ -172,11 +184,20 @@ class CourseStore:
             ).fetchone()
         if existing:
             slug = f"{slug}-{course_id[:6]}"
+
+        # Auto-match a cover from the asset library (Covers/<slug>.<ext>).
+        cover_filename = ""
+        for ext in (".png", ".jpg", ".jpeg", ".webp"):
+            candidate = COVERS_DIR / f"{slug}{ext}"
+            if candidate.exists():
+                cover_filename = candidate.name
+                break
+
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO courses (id, slug, title, description, cover_filename, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?, '', ?, ?)",
-                (course_id, slug, title, description, now, now),
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (course_id, slug, title, description, cover_filename, now, now),
             )
         course = Course(id=course_id, slug=slug, title=title, description=description,
                         created_at=now, updated_at=now)
