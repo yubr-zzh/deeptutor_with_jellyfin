@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchAuthStatus, AUTH_ENABLED } from "@/lib/auth";
 import {
   BrainCircuit,
