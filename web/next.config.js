@@ -119,6 +119,18 @@ const nextConfig = {
     },
   },
 
+  // Proxy /api/* to the backend so the browser always talks to the
+  // same origin (no CORS / cross-site cookie issues). Works in dev and prod.
+  async rewrites() {
+    const backend = `http://localhost:${BACKEND_PORT}`;
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backend}/api/:path*`,
+      },
+    ];
+  },
+
   // Webpack configuration (used for production builds - next build)
   webpack: (config) => {
     const path = require("path");
