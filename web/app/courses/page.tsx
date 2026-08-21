@@ -24,7 +24,7 @@ function getCourseGradient(seed: string): string {
 }
 
 function CourseCard({ course }: { course: CourseRecord }) {
-  const videoCount = course.videos?.length ?? 0;
+  const videoCount = course.video_count ?? course.videos?.length ?? 0;
   const initial = course.title.charAt(0).toUpperCase();
   const gradient = getCourseGradient(course.title);
 
@@ -44,10 +44,22 @@ function CourseCard({ course }: { course: CourseRecord }) {
       href={`/courses/${course.id}`}
       className="group block overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)]/40 hover:shadow-md"
     >
-      <div className={`relative h-40 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 transition-transform duration-200 group-hover:scale-110">
-          <span className="text-2xl font-bold text-white/90">{initial}</span>
-        </div>
+      <div className={`relative h-40 ${course.cover_url ? "" : `bg-gradient-to-br ${gradient}`} flex items-center justify-center overflow-hidden`}>
+        {course.cover_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={course.cover_url}
+              alt={course.title}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-black/10" />
+          </>
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 transition-transform duration-200 group-hover:scale-110">
+            <span className="text-2xl font-bold text-white/90">{initial}</span>
+          </div>
+        )}
         <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-sm px-2.5 py-1">
           <Clapperboard size={12} className="text-white/70" />
           <span className="text-[11px] font-medium text-white">{videoCount} 集</span>

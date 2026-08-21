@@ -64,12 +64,14 @@ function EpisodeItem({
   idx,
   isActive,
   watched,
+  progress,
   onClick,
 }: {
   video: CourseVideoRecord;
   idx: number;
   isActive: boolean;
   watched: boolean;
+  progress: number;
   onClick: () => void;
 }) {
   const playable = video.status === "indexed";
@@ -104,6 +106,19 @@ function EpisodeItem({
             {video.title}
           </span>
         </div>
+        {progress > 0 && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.min(100, progress)}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] font-medium text-emerald-500">
+              {Math.round(progress)}%
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <EpisodeStatus status={video.status} />
@@ -278,6 +293,18 @@ export default function CourseDetailPage() {
           player.currentTime = saved;
         }, { once: true });
       }
+    }
+  }
+
+  // Compute per-video progress percentage (0-100) from localStorage
+  function videoProgress(videoId: string): number {
+    try {
+      const time = parseFloat(localStorage.getItem(`dt_progress_${courseId}_${videoId}`) ?? '0');
+      const dur = parseFloat(localStorage.getItem(`dt_duration_${courseId}_${videoId}`) ?? '0');
+      if (dur <= 0 || time <= 0) return 0;
+      return Math.min(100, (time / dur) * 100);
+    } catch {
+      return 0;
     }
   }
 
@@ -570,6 +597,22 @@ export default function CourseDetailPage() {
                 <h2 className="mb-3 hidden text-[14px] font-semibold text-[var(--foreground)] lg:block">
                   课时列表
                 </h2>
+                {videos.length > 0 && (
+                  <div className="mb-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-3">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="font-medium text-[var(--foreground)]">总进度</span>
+                      <span className="font-semibold text-emerald-500">
+                        {videos.filter(v => watchedSet.has(v.id)).length}/{videos.length} 集已学 · {Math.round((videos.filter(v => watchedSet.has(v.id)).length / videos.length) * 100)}%
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all"
+                        style={{ width: `${Math.round((videos.filter(v => watchedSet.has(v.id)).length / videos.length) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {videos.length === 0 ? (
                   <p className="py-8 text-center text-[13px] text-[var(--muted-foreground)]">
                     暂无课时
@@ -583,6 +626,7 @@ export default function CourseDetailPage() {
                         idx={idx}
                         isActive={currentVideo?.id === video.id || (!currentVideo && idx === 0)}
                         watched={watchedSet.has(video.id)}
+                        progress={videoProgress(video.id)}
                         onClick={() => {
                           if (video.status === "indexed") {
                             selectVideo(video);

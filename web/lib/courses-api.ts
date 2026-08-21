@@ -9,6 +9,7 @@ export interface CourseRecord {
   created_at: number;
   updated_at: number;
   media_path: string;
+  video_count?: number;
   videos?: CourseVideoRecord[];
 }
 
