@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("avatar_backend")
 
 # API Keys
-GEMINI_API_KEY = "REDACTED_GEMINI_API_KEY"
+# 改为从环境变量读取（硬编码的 key 已公开在 git 历史/公开仓库中，请在 Google Cloud 吊销）
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Avatar personalities
 AVATAR_PERSONALITIES = {
