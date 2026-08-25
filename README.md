@@ -1,5 +1,69 @@
 # DeepTutor Plus — 教育视频课程平台
 
+## Mermaid 架构与数据流
+
+### 系统架构
+
+```mermaid
+flowchart LR
+    U[Browser / Learner] --> FE[Next.js Frontend\n:3000 local / :3782 production]
+    FE -->|/api proxy| API[FastAPI Backend\n:8001]
+
+    API --> AUTH[Auth & Roles\nJWT / admin / user]
+    API --> COURSE[Course Service\ncourse metadata & progress]
+    API --> CHAT[ChatOrchestrator\ncapabilities + tools]
+    API --> MEDIA[Media Proxy\nkeeps Jellyfin key server-side]
+
+    CHAT --> RAG[Knowledge Base / RAG]
+    CHAT --> LLM[LLM Provider\nDeepSeek-compatible]
+    CHAT --> MOA[MoA Model Router]
+    MEDIA --> JF[Jellyfin\nvideo storage / transcoding / streaming]
+    COURSE --> DB[(Application DB\nusers / courses / video_progress)]
+
+    FE --> AV[Avatar Renderer\nThree.js + GLB]
+    FE --> TTS[Browser TTS\nKokoro, optional]
+```
+
+### 数据流转链路
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Learner as 用户浏览器
+    participant Next as Next.js 前端
+    participant API as FastAPI 后端
+    participant Agent as ChatOrchestrator
+    participant Tools as RAG / Tools / LLM
+    participant Avatar as Avatar + TTS
+    participant Media as Jellyfin
+    participant DB as 应用数据库
+
+    alt AI 对话
+        Learner->>Next: 输入问题 / 选择 Normal 或 Avatar
+        Next->>API: WebSocket /api/v1/ws
+        API->>Agent: 创建会话并路由 capability
+        Agent->>Tools: 检索知识库、调用工具、请求模型
+        Tools-->>Agent: 返回上下文与模型增量结果
+        Agent-->>API: StreamEvent（阶段、内容、结果）
+        API-->>Next: 流式事件
+        Next-->>Learner: Markdown / LaTeX 增量渲染
+        Next->>Avatar: 更新 idle / thinking / speaking 状态
+        opt 开启 TTS
+            Next->>Avatar: 播放浏览器端语音
+        end
+    else 课程视频
+        Learner->>Next: 浏览课程并打开视频
+        Next->>API: GET /courses 与视频 stream URL
+        API->>DB: 查询课程、用户权限与历史进度
+        API->>Media: 使用服务端 API key 请求媒体流
+        Media-->>API: Jellyfin 视频流
+        API-->>Next: 代理视频流
+        Learner->>Next: 播放 / 拖动进度
+        Next->>API: PUT /video_progress
+        API->>DB: 按用户持久化播放进度
+    end
+```
+
 > 在 DeepTutor（个性化智能辅导系统）基础上，近两周完成 **课程点播 + 学习进度** 全链路功能：
 > DeepTutor（课程管理/权限/流代理）× Jellyfin（视频存储/转码/并发出流）。
 
