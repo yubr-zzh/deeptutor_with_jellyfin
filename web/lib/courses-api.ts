@@ -6,6 +6,7 @@ export interface CourseRecord {
   title: string;
   description: string;
   cover_filename: string;
+  cover_url: string;
   created_at: number;
   updated_at: number;
   media_path: string;
