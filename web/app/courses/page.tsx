@@ -23,6 +23,37 @@ function getCourseGradient(seed: string): string {
   return gradients[Math.abs(hash) % gradients.length];
 }
 
+function normalizeSearchText(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase().trim();
+}
+
+function getSearchTokens(value: string): string[] {
+  return normalizeSearchText(value).match(/[\p{L}\p{N}\u3400-\u9fff]+/gu) ?? [];
+}
+
+function getCourseSearchScore(course: CourseRecord, query: string): number {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return 0;
+
+  const title = normalizeSearchText(course.title);
+  const description = normalizeSearchText(course.description || "");
+  const videoTitles = (course.videos ?? []).map((video) => normalizeSearchText(video.title));
+  const tokens = getSearchTokens(query);
+  const fields = [title, description, ...videoTitles];
+
+  // A contiguous phrase is the strongest signal; every keyword must match
+  // somewhere so queries such as "计算机 算法" remain useful and precise.
+  const phraseScore = fields.some((field) => field.includes(normalizedQuery)) ? 100 : 0;
+  const keywordScore = tokens.reduce((score, token) => {
+    if (title.includes(token)) return score + 35;
+    if (videoTitles.some((videoTitle) => videoTitle.includes(token))) return score + 22;
+    if (description.includes(token)) return score + 12;
+    return score;
+  }, 0);
+  const allKeywordsMatch = tokens.every((token) => fields.some((field) => field.includes(token)));
+  return allKeywordsMatch ? phraseScore + keywordScore : -1;
+}
+
 function CourseCard({ course }: { course: CourseRecord }) {
   const videoCount = course.video_count ?? course.videos?.length ?? 0;
   const initial = course.title.charAt(0).toUpperCase();
@@ -141,14 +172,11 @@ export default function CoursesPage() {
     });
   }, [router, load]);
 
-  const filteredCourses = courses.filter((c) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      c.title.toLowerCase().includes(q) ||
-      (c.description || "").toLowerCase().includes(q)
-    );
-  });
+  const filteredCourses = courses
+    .map((course, index) => ({ course, index, score: getCourseSearchScore(course, searchQuery) }))
+    .filter(({ score }) => !searchQuery.trim() || score >= 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ course }) => course);
 
   return (
     <div className="h-screen overflow-y-auto bg-[var(--background)] [scrollbar-gutter:stable]">
