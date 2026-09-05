@@ -44,7 +44,7 @@ export default function ThemeSwitcher() {
               }}
               className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[12px] text-[var(--foreground)] transition-colors hover:bg-[var(--background)]"
             >
-              <span>theme: {option}</span>
+              <span>{option}</span>
               {activeTheme === option && <Check size={14} className="text-[var(--primary)]" />}
             </button>
           ))}

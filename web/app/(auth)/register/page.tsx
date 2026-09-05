@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { register, checkIsFirstUser, fetchAuthStatus } from "@/lib/auth";
 
 export default function RegisterPage() {
@@ -51,6 +52,14 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full max-w-sm">
+      <Link
+        href="/login"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+      >
+        <ArrowLeft size={15} aria-hidden="true" />
+        Back to login
+      </Link>
+
       {/* Logo / Title */}
       <div className="text-center mb-8">
         <h1 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">
@@ -72,18 +81,18 @@ export default function RegisterPage() {
       {/* Card */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm px-8 py-8">
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          {/* Name or email */}
           <div>
             <label
               htmlFor="username"
               className="block text-sm font-medium text-[var(--foreground)] mb-1.5"
             >
-              Email
+              Name/Email
             </label>
             <input
               id="username"
               type="text"
-              autoComplete="email"
+              autoComplete="username"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -92,7 +101,7 @@ export default function RegisterPage() {
                          placeholder:text-[var(--muted-foreground)]
                          focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent
                          transition-shadow text-sm"
-              placeholder="you@example.com"
+              placeholder="Your name or email"
             />
           </div>
 
