@@ -151,7 +151,7 @@ export default function CoursesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="h-screen overflow-y-auto bg-[var(--background)] [scrollbar-gutter:stable]">
       <div className="mx-auto max-w-5xl px-6 py-10">
         <header className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-[12px] text-[var(--muted-foreground)]">

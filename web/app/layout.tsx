@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ThemeScript from "@/components/ThemeScript";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { AppShellProvider } from "@/context/AppShellContext";
 import { I18nClientBridge } from "@/i18n/I18nClientBridge";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans bg-[var(--background)] text-[var(--foreground)]">
         <AppShellProvider>
+          <ThemeSwitcher />
           <I18nClientBridge>{children}</I18nClientBridge>
         </AppShellProvider>
       </body>

@@ -423,7 +423,7 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="h-screen overflow-y-auto bg-[var(--background)] [scrollbar-gutter:stable]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <nav className="mb-5 flex items-center gap-2 text-[12px] text-[var(--muted-foreground)]">
           <Link href="/" className="hover:text-[var(--foreground)] transition-colors">首页</Link>
