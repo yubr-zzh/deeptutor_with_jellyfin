@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { login, fetchAuthStatus, checkIsFirstUser } from "@/lib/auth";
+import { login, fetchAuthStatus } from "@/lib/auth";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -24,10 +24,6 @@ function LoginPageContent() {
         router.replace(next);
         return;
       }
-      // No users registered yet — send straight to the registration page
-      checkIsFirstUser().then((first) => {
-        if (first) router.replace("/register");
-      });
     });
   }, [router, next]);
 
