@@ -25,6 +25,11 @@ WORKDIR /app/web
 # Accept build argument for backend port
 ARG BACKEND_PORT=8001
 
+# Auth is evaluated by Next.js middleware at build time. Keep this explicit so
+# production images cannot accidentally be built with page protection disabled.
+ARG NEXT_PUBLIC_AUTH_ENABLED=false
+ENV NEXT_PUBLIC_AUTH_ENABLED=$NEXT_PUBLIC_AUTH_ENABLED
+
 # Application version (e.g. "v1.2.3"). Passed by CI from the release tag
 # and inlined into the Next.js bundle via NEXT_PUBLIC_APP_VERSION so the
 # sidebar version badge can compare it with the latest GitHub release.
@@ -44,7 +49,7 @@ COPY web/ ./
 
 # Create .env.local with placeholder that will be replaced at runtime
 # Use a unique placeholder that can be safely replaced
-RUN echo "NEXT_PUBLIC_API_BASE=__NEXT_PUBLIC_API_BASE_PLACEHOLDER__" > .env.local
+RUN printf "NEXT_PUBLIC_API_BASE=__NEXT_PUBLIC_API_BASE_PLACEHOLDER__\nNEXT_PUBLIC_AUTH_ENABLED=%s\n" "$NEXT_PUBLIC_AUTH_ENABLED" > .env.local
 
 # Build Next.js for production with standalone output
 # This allows runtime environment variable injection
